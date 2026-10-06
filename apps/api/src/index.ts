@@ -19,11 +19,14 @@ export function buildServer(): ReturnType<typeof Fastify> {
 
   app.get("/health", async () => ({
     ok: true,
-    etsy: etsy.mode,
+    etsy: etsy.effectiveMode,
+    degraded: etsy.degraded,
     note:
       etsy.mode === "fixture"
         ? "ETSY_API_KEY not set — serving labeled fixture data until the key is approved"
-        : "live Etsy API",
+        : etsy.degraded
+          ? "key rejected by Etsy (not active yet?) — serving labeled fixture data"
+          : "live Etsy API",
   }));
 
   /** Keyword overview (PRD §5.1). Fixture until the key is active. */
@@ -51,7 +54,8 @@ export function buildServer(): ReturnType<typeof Fastify> {
     });
     return {
       keyword,
-      mode: etsy.mode,
+      mode: etsy.effectiveMode,
+      degraded: etsy.degraded,
       competition,
       difficulty,
       difficultyPass: difficulty < 50,

@@ -1,0 +1,50 @@
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { EtsyClient } from "./etsy.js";
+
+describe("EtsyClient degraded fallback", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("serves labeled fixtures when the key is rejected (401/403)", async () => {
+    vi.stubGlobal(
+      "fetch",
+      async () =>
+        new Response(JSON.stringify({ error: "Invalid API key" }), { status: 403 }),
+    );
+    const client = new EtsyClient("not-a-real-key");
+    expect(client.mode).toBe("live");
+    expect(client.degraded).toBe(false);
+
+    const listings = await client.searchListings("resume");
+    expect(client.degraded).toBe(true);
+    expect(client.effectiveMode).toBe("fixture");
+    expect(listings.length).toBeGreaterThan(0);
+    expect(listings.every((l) => l.fixture === true)).toBe(true);
+
+    const shop = await client.getShop(9001);
+    expect(shop.fixture).toBe(true);
+  });
+
+  it("stays in fixture mode when no key is set (no network calls)", async () => {
+    const failFetch = vi.fn(async () => {
+      throw new Error("should not be called");
+    });
+    vi.stubGlobal("fetch", failFetch);
+    const client = new EtsyClient(undefined);
+    expect(client.mode).toBe("fixture");
+    const listings = await client.searchListings("resume");
+    expect(failFetch).not.toHaveBeenCalled();
+    expect(listings.length).toBeGreaterThan(0);
+  });
+
+  it("rethrows non-auth errors instead of degrading", async () => {
+    vi.stubGlobal(
+      "fetch",
+      async () => new Response("boom", { status: 500 }),
+    );
+    const client = new EtsyClient("not-a-real-key");
+    await expect(client.searchListings("resume")).rejects.toThrow("Etsy API 500");
+    expect(client.degraded).toBe(false);
+  });
+});

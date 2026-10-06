@@ -75,7 +75,8 @@ export function registerResearchRoutes(app: FastifyInstance, etsy: EtsyClient): 
     );
     return {
       keyword,
-      mode: etsy.mode,
+      mode: etsy.effectiveMode,
+      degraded: etsy.degraded,
       stats: {
         medianPrice: median(prices),
         avgViews: Math.round(viewsNums.reduce((s, v) => s + v, 0) / viewsNums.length),
@@ -104,7 +105,12 @@ export function registerResearchRoutes(app: FastifyInstance, etsy: EtsyClient): 
       listingsPerMonth: t.listingsPerMonth,
       medianAgeDays: t.medianAgeDays,
     }));
-    return { scope: scope.trim(), mode: etsy.mode, rows: heatIndex(inputs) };
+    return {
+      scope: scope.trim(),
+      mode: etsy.effectiveMode,
+      degraded: etsy.degraded,
+      rows: heatIndex(inputs),
+    };
   });
 
   /**
@@ -135,7 +141,8 @@ export function registerResearchRoutes(app: FastifyInstance, etsy: EtsyClient): 
 
     return {
       keyword,
-      mode: etsy.mode,
+      mode: etsy.effectiveMode,
+      degraded: etsy.degraded,
       stats: {
         competitors: enriched.length,
         avgViews: Math.round(viewsNums.reduce((s, v) => s + v, 0) / viewsNums.length),

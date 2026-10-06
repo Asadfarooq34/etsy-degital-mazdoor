@@ -59,9 +59,19 @@ const FIXTURE_SHOP: Shop & { fixture: true } = {
 export class EtsyClient {
   readonly mode: EtsyMode;
   private readonly limiter = new RateLimiter();
+  /**
+   * True once a live call is rejected with 401/403 (key not active yet).
+   * From then on we serve clearly-labeled fixture data instead of erroring.
+   */
+  degraded = false;
 
   constructor(private readonly apiKey: string | undefined = process.env["ETSY_API_KEY"]) {
     this.mode = apiKey ? "live" : "fixture";
+  }
+
+  /** Data provenance for responses: "live" only when truly live. */
+  get effectiveMode(): "live" | "fixture" {
+    return this.mode === "live" && !this.degraded ? "live" : "fixture";
   }
 
   private async get<T>(path: string): Promise<T> {
@@ -72,6 +82,13 @@ export class EtsyClient {
     const res = await fetch(`${API_BASE}${path}`, {
       headers: { "x-api-key": this.apiKey! },
     });
+    if (res.status === 401 || res.status === 403) {
+      this.degraded = true;
+      throw Object.assign(
+        new Error(`Etsy auth rejected (${res.status}) — key not active yet?`),
+        { code: "ETSY_AUTH" },
+      );
+    }
     if (res.status === 429) {
       throw new Error("Etsy rate limit hit (429) — backing off");
     }
@@ -81,24 +98,45 @@ export class EtsyClient {
     return (await res.json()) as T;
   }
 
-  /** Search listings by keyword. Fixture mode returns labeled fixtures. */
-  async searchListings(keyword: string, limit = 24): Promise<(Listing & { fixture?: true })[]> {
-    if (this.mode === "fixture") {
-      return FIXTURE_LISTINGS.filter((l) =>
-        l.title.toLowerCase().includes(keyword.toLowerCase().split(" ")[0] ?? ""),
-      ).slice(0, limit);
-    }
-    const data = await this.get<{ results: unknown[] }>(
-      `/listings/search?q=${encodeURIComponent(keyword)}&limit=${limit}`,
+  private static isAuthError(e: unknown): boolean {
+    return (
+      typeof e === "object" && e !== null && (e as { code?: string }).code === "ETSY_AUTH"
     );
-    return data.results as Listing[];
+  }
+
+  /** Search listings by keyword. Fixture mode (or degraded) returns labeled fixtures. */
+  async searchListings(keyword: string, limit = 24): Promise<(Listing & { fixture?: true })[]> {
+    if (this.mode === "fixture" || this.degraded) {
+      return this.fixtureSearch(keyword, limit);
+    }
+    try {
+      const data = await this.get<{ results: unknown[] }>(
+        `/listings/search?q=${encodeURIComponent(keyword)}&limit=${limit}`,
+      );
+      return data.results as Listing[];
+    } catch (e) {
+      if (EtsyClient.isAuthError(e)) return this.fixtureSearch(keyword, limit);
+      throw e;
+    }
   }
 
   /** Shop details incl. public lifetime sales total. */
   async getShop(shopId: number): Promise<Shop & { fixture?: true }> {
-    if (this.mode === "fixture") {
+    if (this.mode === "fixture" || this.degraded) {
       return { ...FIXTURE_SHOP, shopId };
     }
-    return this.get<Shop>(`/shops/${shopId}`);
+    try {
+      return await this.get<Shop>(`/shops/${shopId}`);
+    } catch (e) {
+      if (EtsyClient.isAuthError(e)) return { ...FIXTURE_SHOP, shopId };
+      throw e;
+    }
+  }
+
+  private fixtureSearch(keyword: string, limit: number): (Listing & { fixture: true })[] {
+    const firstWord = keyword.toLowerCase().split(" ")[0] ?? "";
+    return FIXTURE_LISTINGS.filter((l) =>
+      l.title.toLowerCase().includes(firstWord),
+    ).slice(0, limit);
   }
 }
