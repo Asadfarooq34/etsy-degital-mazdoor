@@ -2,8 +2,14 @@
  * Digital Mazdoor API — local-only Fastify server.
  * Binds to 127.0.0.1 only: this tool never serves the public internet.
  */
-import "dotenv/config";
+import dotenv from "dotenv";
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 import Fastify from "fastify";
+// Load .env from the api package dir AND the repo root (npm runs from root,
+// so a bare `import "dotenv/config"` would miss apps/api/.env).
+const here = path.dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: [path.join(here, "..", ".env"), path.join(here, "..", "..", "..", ".env")] });
 import { calculateFees, estimateViews, keywordDifficulty, opportunityScore } from "@digital-mazdoor/core";
 import { closeDb, getDb } from "./db.js";
 import { EtsyClient } from "./etsy.js";
