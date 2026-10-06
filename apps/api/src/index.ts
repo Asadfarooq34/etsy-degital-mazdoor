@@ -1,0 +1,88 @@
+/**
+ * Digital Mazdoor API — local-only Fastify server.
+ * Binds to 127.0.0.1 only: this tool never serves the public internet.
+ */
+import "dotenv/config";
+import Fastify from "fastify";
+import { calculateFees, estimateViews, keywordDifficulty, opportunityScore } from "@digital-mazdoor/core";
+import { closeDb, getDb } from "./db.js";
+import { EtsyClient } from "./etsy.js";
+import { registerResearchRoutes } from "./research.js";
+
+const PORT = Number(process.env["PORT"] ?? 3001);
+
+export function buildServer(): ReturnType<typeof Fastify> {
+  const app = Fastify({ logger: true });
+  const etsy = new EtsyClient();
+  getDb(); // ensure schema exists
+  registerResearchRoutes(app, etsy);
+
+  app.get("/health", async () => ({
+    ok: true,
+    etsy: etsy.mode,
+    note:
+      etsy.mode === "fixture"
+        ? "ETSY_API_KEY not set — serving labeled fixture data until the key is approved"
+        : "live Etsy API",
+  }));
+
+  /** Keyword overview (PRD §5.1). Fixture until the key is active. */
+  app.get("/api/keywords/overview", async (req) => {
+    const { keyword = "" } = req.query as { keyword?: string };
+    if (!keyword.trim()) {
+      throw Object.assign(new Error("?keyword= is required"), { statusCode: 400 });
+    }
+    const listings = await etsy.searchListings(keyword, 100);
+    const competition = etsy.mode === "fixture" ? 45_300 : listings.length;
+    const avgFavs =
+      listings.length > 0
+        ? listings.reduce((s, l) => s + l.numFavorers, 0) / listings.length
+        : 0;
+    // Views: measured if the API exposes them, otherwise a LABELED estimate.
+    const measuredViews = listings.map((l) => l.views).filter((v): v is number => typeof v === "number");
+    const avgViews =
+      measuredViews.length > 0
+        ? measuredViews.reduce((s, v) => s + v, 0) / measuredViews.length
+        : estimateViews(Math.round(avgFavs), 0.016); // category benchmark ratio, "est."
+    const difficulty = keywordDifficulty({
+      competition,
+      avgViews: typeof avgViews === "number" ? avgViews : avgViews.value,
+      avgFavs,
+    });
+    return {
+      keyword,
+      mode: etsy.mode,
+      competition,
+      difficulty,
+      difficultyPass: difficulty < 50,
+      opportunity: opportunityScore({ difficulty, volume: 0 }),
+      avgFavs: Math.round(avgFavs * 10) / 10,
+      avgViews,
+      sampleSize: listings.length,
+    };
+  });
+
+  /** Fee calculator (pure tool — no Etsy data needed). */
+  app.post("/api/tools/fee-calculator", async (req) => {
+    return calculateFees(req.body as Parameters<typeof calculateFees>[0]);
+  });
+
+  return app;
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  const app = buildServer();
+  app
+    .listen({ port: PORT, host: "127.0.0.1" })
+    .then(() => app.log.info(`Digital Mazdoor API on http://127.0.0.1:${PORT}`))
+    .catch((err: unknown) => {
+      app.log.error(err);
+      process.exit(1);
+    });
+  for (const sig of ["SIGINT", "SIGTERM"] as const) {
+    process.on(sig, () => {
+      closeDb();
+      void app.close().then(() => process.exit(0));
+    });
+  }
+}
