@@ -20,6 +20,7 @@ import {
 } from "@digital-mazdoor/core";
 import type { EtsyClient } from "./etsy.js";
 import { getDb } from "./db.js";
+import { googleInterest, peakMonth, trendDirection } from "./trends.js";
 
 const FAVS_VIEW_RATIO = 0.016;
 const DAY_SECONDS = 86_400;
@@ -64,8 +65,10 @@ export function registerKeywordFullRoutes(app: FastifyInstance, etsy: EtsyClient
     if (!kw) throw Object.assign(new Error("?keyword= is required"), { statusCode: 400 });
     const live = etsy.effectiveMode === "live";
 
-    // 1. Main sample: top 100 listings for the keyword.
+    // 1. Main sample: top 100 listings for the keyword (+ Google Trends in parallel).
+    const trendsPromise = googleInterest(kw).catch(() => null);
     const { listings, count } = await etsy.searchListings(kw, 100);
+    const trends = await trendsPromise;
     const competition = live ? count : 45_300;
 
     const viewsList = listings.map((l) => viewsNum(l.views ?? estimateViews(l.numFavorers, FAVS_VIEW_RATIO)));
@@ -231,6 +234,16 @@ export function registerKeywordFullRoutes(app: FastifyInstance, etsy: EtsyClient
       competitionMix,
       difficultySpread,
       opportunities,
+      trends: trends
+        ? {
+            monthly: trends.monthly,
+            peakMonth: peakMonth(trends.monthly)?.label ?? null,
+            direction: trendDirection(trends.monthly),
+            countries: trends.countries.slice(0, 7),
+          }
+        : null,
+      trendsNote:
+        "Google web-search interest (0–100), NOT Etsy search volume. Labeled proxy.",
       googleNote:
         "Google search volume & CPC need the paid Google Ads API — not connected. Use the Trends page (Google Trends proxy) for demand direction.",
     };

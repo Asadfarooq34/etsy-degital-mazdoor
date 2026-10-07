@@ -8,6 +8,52 @@ const fmt = (n: number) =>
       ? `${(n / 1_000).toFixed(1)}K`
       : `${Math.round(n)}`;
 
+/** 12-month line chart (RankKW §"Search Trends" position). */
+function TrendChart({ points }: { points: { label: string; value: number }[] }) {
+  const W = 420;
+  const H = 170;
+  const PAD = 30;
+  const max = Math.max(1, ...points.map((p) => p.value));
+  const x = (i: number) => PAD + (i / Math.max(1, points.length - 1)) * (W - PAD * 2);
+  const y = (v: number) => H - PAD - (v / max) * (H - PAD * 2);
+  const d = points.map((p, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(p.value)}`).join(" ");
+  return (
+    <svg viewBox={`0 0 ${W} ${H}`} style={{ width: "100%", height: "auto" }}>
+      {[0.25, 0.5, 0.75, 1].map((f) => (
+        <line
+          key={f}
+          x1={PAD}
+          x2={W - PAD}
+          y1={y(max * f)}
+          y2={y(max * f)}
+          stroke="var(--border)"
+          strokeWidth={1}
+        />
+      ))}
+      <path
+        d={`${d} L${x(points.length - 1)},${y(0)} L${x(0)},${y(0)} Z`}
+        fill="var(--purple-100)"
+        opacity={0.6}
+      />
+      <path d={d} fill="none" stroke="var(--purple-600)" strokeWidth={2.5} />
+      {points.map((p, i) =>
+        i % 2 === 0 ? (
+          <text
+            key={i}
+            x={x(i)}
+            y={H - 8}
+            fontSize={10}
+            textAnchor="middle"
+            fill="var(--ink-400)"
+          >
+            {p.label}
+          </text>
+        ) : null,
+      )}
+    </svg>
+  );
+}
+
 function Donut({
   segments,
   total,
@@ -95,12 +141,15 @@ export default function Keywords() {
 
   const d = result?.difficulty;
   const maxOpp = result ? Math.max(1, ...result.opportunities.map((o) => o.score)) : 1;
+  const maxCountry = result?.trends
+    ? Math.max(1, ...result.trends.countries.map((c) => c.value))
+    : 1;
 
   return (
     <div>
       <h1 className="page-title">Keywords</h1>
       <p className="page-sub">
-        Full keyword overview — statistics, market activity, difficulty, ideas, opportunities.
+        Full keyword overview — statistics, trends, market activity, difficulty, ideas.
       </p>
 
       <div className="card">
@@ -135,39 +184,94 @@ export default function Keywords() {
             )}
           </h2>
 
-          <div className="card">
-            <h3>Keyword statistics</h3>
-            <div className="stats">
-              <div className="stat">
-                <div className="stat-label">Avg. views</div>
-                <div className="stat-value">{fmt(result.statistics.avgViews)}</div>
-                <div className="stat-note">per listing (Etsy)</div>
+          {/* Row 1: Statistics | Trends | Countries (RankKW top-row order) */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "1fr 1.4fr 1fr",
+              gap: 12,
+            }}
+          >
+            <div className="card">
+              <h3>Keyword statistics</h3>
+              <div className="stat-note" style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
+                <span>Avg. views</span>
+                <strong>{fmt(result.statistics.avgViews)}</strong>
               </div>
-              <div className="stat">
-                <div className="stat-label">Avg. favorites</div>
-                <div className="stat-value">{fmt(result.statistics.avgFavorites)}</div>
-                <div className="stat-note">hearts / listing</div>
+              <div className="stat-note" style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
+                <span>Avg. favorites</span>
+                <strong>{fmt(result.statistics.avgFavorites)}</strong>
               </div>
-              <div className="stat">
-                <div className="stat-label">Favs / view</div>
-                <div className="stat-value">{result.statistics.favsView}%</div>
-                <div className="stat-note">engagement</div>
+              <div className="stat-note" style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
+                <span>Favs / view</span>
+                <strong>{result.statistics.favsView}%</strong>
               </div>
-              <div className="stat">
-                <div className="stat-label">Avg. price</div>
-                <div className="stat-value">${result.statistics.avgPrice.toFixed(2)}</div>
-                <div className="stat-note">dominant currency</div>
+              <div className="stat-note" style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
+                <span>Avg. price</span>
+                <strong>${result.statistics.avgPrice.toFixed(2)}</strong>
               </div>
-              <div className="stat">
-                <div className="stat-label">Competition</div>
-                <div className="stat-value">{fmt(result.statistics.competition)}</div>
-                <div className="stat-note">live listings on Etsy</div>
+              <div className="stat-note" style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
+                <span>Competition</span>
+                <strong>{fmt(result.statistics.competition)}</strong>
               </div>
             </div>
-            <p className="stat-note">{result.googleNote}</p>
+
+            <div className="card">
+              <h3>Search trends (12 months)</h3>
+              {result.trends ? (
+                <div>
+                  <TrendChart points={result.trends.monthly} />
+                  <p className="stat-note">
+                    Peak: <strong>{result.trends.peakMonth ?? "—"}</strong> ·{" "}
+                    {result.trends.direction === "rising" ? (
+                      <span className="badge badge-pass">RISING</span>
+                    ) : result.trends.direction === "falling" ? (
+                      <span className="badge badge-fail">FALLING</span>
+                    ) : (
+                      <span className="badge badge-est">STABLE</span>
+                    )}
+                  </p>
+                  <p className="stat-note">{result.trendsNote}</p>
+                </div>
+              ) : (
+                <p className="stat-note">Trends unavailable right now.</p>
+              )}
+            </div>
+
+            <div className="card">
+              <h3>Searchers by country</h3>
+              {result.trends ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {result.trends.countries.map((c) => (
+                    <div key={c.country} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ minWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {c.country}
+                      </span>
+                      <div style={{ flex: 1, height: 8, background: "var(--border)", borderRadius: 4 }}>
+                        <div
+                          style={{
+                            width: `${(c.value / maxCountry) * 100}%`,
+                            height: "100%",
+                            background: "var(--purple-600)",
+                            borderRadius: 4,
+                          }}
+                        />
+                      </div>
+                      <span className="stat-note" style={{ minWidth: 30, textAlign: "right" }}>
+                        {c.value}
+                      </span>
+                    </div>
+                  ))}
+                  <p className="stat-note">Google Trends proxy — not Etsy searchers.</p>
+                </div>
+              ) : (
+                <p className="stat-note">Unavailable right now.</p>
+              )}
+            </div>
           </div>
 
-          <div className="card">
+          {/* Market Activity */}
+          <div className="card" style={{ marginTop: 12 }}>
             <h3>Market activity (measured)</h3>
             <p className="stat-note">Top {result.marketActivity.listingsAnalyzed} listings ranking now</p>
             <div className="stats">
@@ -206,15 +310,10 @@ export default function Keywords() {
                 <div className="stat-note">views / week</div>
               </div>
             </div>
-            <p className="stat-note">
-              Day over day:{" "}
-              {result.marketActivity.dayOverDay.views !== null
-                ? `${result.marketActivity.dayOverDay.views >= 0 ? "+" : ""}${result.marketActivity.dayOverDay.views} views`
-                : result.marketActivity.dayOverDay.note}
-            </p>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          {/* Row: Difficulty | Opportunities */}
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
             <div className="card">
               <h3>Keyword difficulty</h3>
               {d && (
@@ -227,14 +326,7 @@ export default function Keywords() {
                       {d.level}
                     </span>
                   </div>
-                  <div
-                    style={{
-                      height: 8,
-                      background: "var(--border)",
-                      borderRadius: 4,
-                      margin: "8px 0 12px",
-                    }}
-                  >
+                  <div style={{ height: 8, background: "var(--border)", borderRadius: 4, margin: "8px 0 12px" }}>
                     <div
                       style={{
                         width: `${Math.min(100, d.score)}%`,
@@ -288,6 +380,45 @@ export default function Keywords() {
             </div>
           </div>
 
+          {/* Top Listings */}
+          <div className="card" style={{ marginTop: 12 }}>
+            <h3>Top listings</h3>
+            <p className="stat-note">
+              The listings currently ranking for this keyword, in Etsy&apos;s own order.
+            </p>
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
+                gap: 12,
+                marginTop: 8,
+              }}
+            >
+              {result.topListings.map((l) => (
+                <div key={l.listingId} className="card" style={{ margin: 0 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <span className="badge badge-est">#{l.rank}</span>
+                    <strong>${l.price.amount.toFixed(2)}</strong>
+                  </div>
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>{l.title}</div>
+                  <div className="stat-note">Shop #{l.shopId}</div>
+                  <div className="stat-note" style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
+                    <span>Age {l.ageDays}d</span>
+                    <span>{fmt(l.views)} views</span>
+                  </div>
+                  <div className="stat-note" style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>{l.viewsPerDay}/day</span>
+                    <span>{l.favsView}% favs/view</span>
+                  </div>
+                  <a href={l.url} target="_blank" rel="noreferrer" style={{ color: "var(--purple-700)", fontSize: 13 }}>
+                    See on Etsy ↗
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Row: Competition Mix | Difficulty Spread */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
             <div className="card">
               <h3>Competition mix</h3>
@@ -317,55 +448,8 @@ export default function Keywords() {
             </div>
           </div>
 
-          <div className="card">
-            <h3>Top listings</h3>
-            <p className="stat-note">
-              The listings currently ranking for this keyword, in Etsy&apos;s own order.
-            </p>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-                gap: 12,
-                marginTop: 8,
-              }}
-            >
-              {result.topListings.map((l) => (
-                <div key={l.listingId} className="card" style={{ margin: 0 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <span className="badge badge-est">#{l.rank}</span>
-                    <strong>${l.price.amount.toFixed(2)}</strong>
-                  </div>
-                  <div style={{ fontWeight: 600, marginBottom: 4 }}>{l.title}</div>
-                  <div className="stat-note">Shop #{l.shopId}</div>
-                  <div
-                    className="stat-note"
-                    style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}
-                  >
-                    <span>Age {l.ageDays}d</span>
-                    <span>{fmt(l.views)} views</span>
-                  </div>
-                  <div
-                    className="stat-note"
-                    style={{ display: "flex", justifyContent: "space-between" }}
-                  >
-                    <span>{l.viewsPerDay}/day</span>
-                    <span>{l.favsView}% favs/view</span>
-                  </div>
-                  <a
-                    href={l.url}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={{ color: "var(--purple-700)", fontSize: 13 }}
-                  >
-                    See on Etsy ↗
-                  </a>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="card">
+          {/* Keyword Ideas */}
+          <div className="card" style={{ marginTop: 12 }}>
             <h3>Keyword ideas ({result.ideaCount})</h3>
             <p className="stat-note">
               Related keywords from real listing tags. Competition is the real total of live

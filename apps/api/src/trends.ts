@@ -49,10 +49,12 @@ function toMonthly(timeline: { time: string; value: number[] }[]): TrendPoint[] 
     }));
 }
 
-async function googleInterest(keyword: string): Promise<{
+export interface TrendData {
   monthly: TrendPoint[];
   countries: { country: string; value: number }[];
-}> {
+}
+
+export async function googleInterest(keyword: string): Promise<TrendData> {
   const startTime = new Date();
   startTime.setMonth(startTime.getMonth() - 12);
   const [overTimeRaw, byRegionRaw] = await Promise.all([
@@ -75,12 +77,11 @@ async function googleInterest(keyword: string): Promise<{
   };
 }
 
-function peakMonth(monthly: TrendPoint[]): TrendPoint | null {
-  if (monthly.length === 0) return null;
+export function peakMonth(monthly: TrendPoint[]): TrendPoint | null {  if (monthly.length === 0) return null;
   return monthly.reduce((a, b) => (b.value > a.value ? b : a));
 }
 
-function trendDirection(monthly: TrendPoint[]): "rising" | "falling" | "stable" {
+export function trendDirection(monthly: TrendPoint[]): "rising" | "falling" | "stable" {
   if (monthly.length < 6) return "stable";
   const first = monthly.slice(0, 3).reduce((s, p) => s + p.value, 0) / 3;
   const last = monthly.slice(-3).reduce((s, p) => s + p.value, 0) / 3;

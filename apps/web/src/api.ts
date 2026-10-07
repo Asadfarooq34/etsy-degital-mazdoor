@@ -295,6 +295,13 @@ export interface KeywordFull {
   competitionMix: { low: number; medium: number; high: number };
   difficultySpread: { easy: number; medium: number; hard: number };
   opportunities: { keyword: string; score: number }[];
+  trends: {
+    monthly: { month: string; label: string; value: number }[];
+    peakMonth: string | null;
+    direction: "rising" | "falling" | "stable";
+    countries: { country: string; value: number }[];
+  } | null;
+  trendsNote: string;
   googleNote: string;
 }
 
