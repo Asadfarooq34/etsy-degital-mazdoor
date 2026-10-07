@@ -39,7 +39,7 @@ export function buildServer(): ReturnType<typeof Fastify> {
   });
   const etsy = new EtsyClient();
   console.log(
-    `[api] Etsy mode=${etsy.effectiveMode} keyPresent=${!!process.env["ETSY_API_KEY"]} cwd=${process.cwd()}`,
+    `[api] Etsy mode=${etsy.effectiveMode} keyPresent=${!!process.env["ETSY_API_KEY"]} secretPresent=${!!process.env["ETSY_SHARED_SECRET"]} cwd=${process.cwd()}`,
   );
   getDb(); // ensure schema exists
   registerResearchRoutes(app, etsy);
