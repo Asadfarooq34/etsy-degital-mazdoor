@@ -36,13 +36,30 @@ body {
   width: 248px;
   flex-shrink: 0;
   background: var(--ink-900);
+  background-color: #1e1b2e;
   color: #cfcbe4;
   display: flex;
   flex-direction: column;
   padding: 20px 14px;
-  position: sticky;
+  position: fixed;
+  left: 0;
   top: 0;
+  bottom: 0;
   height: 100vh;
+  height: 100dvh;
+  z-index: 40;
+  /* 31 nav items overflow 100vh — the sidebar must scroll internally,
+     otherwise items spill outside the dark container and look broken. */
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  margin-left: 248px;
+  padding: 28px 32px;
+  max-width: 1180px;
 }
 
 .brand {
@@ -135,12 +152,6 @@ body {
 }
 
 /* ---------- Main ---------- */
-.main {
-  flex: 1;
-  padding: 28px 32px;
-  max-width: 1180px;
-}
-
 .page-title {
   font-size: 22px;
   font-weight: 700;
@@ -530,6 +541,7 @@ body {
   .main {
     padding: 64px 16px 28px;
     max-width: 100%;
+    margin-left: 0;
   }
   .row {
     flex-wrap: wrap;
