@@ -27,6 +27,13 @@ const PORT = Number(process.env["PORT"] ?? 3001);
 
 export function buildServer(): ReturnType<typeof Fastify> {
   const app = Fastify({ logger: true });
+  // Crash-resistance: log instead of dying on unexpected errors.
+  process.on("uncaughtException", (err) => {
+    app.log.error({ err }, "[fatal] uncaught exception — server stays up");
+  });
+  process.on("unhandledRejection", (reason) => {
+    app.log.error({ reason }, "[fatal] unhandled rejection — server stays up");
+  });
   // The local web UI runs on a different origin (localhost:5173 vs 127.0.0.1:3001).
   // This server binds to 127.0.0.1 only, so permissive CORS is safe here.
   app.addHook("onRequest", async (request, reply) => {
