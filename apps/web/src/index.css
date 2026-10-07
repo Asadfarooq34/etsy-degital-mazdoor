@@ -114,6 +114,11 @@ body {
   color: #fff;
 }
 
+.nav-item:disabled {
+  color: #cfcbe4;
+  cursor: default;
+}
+
 .nav-soon {
   margin-left: auto;
   font-size: 10px;
