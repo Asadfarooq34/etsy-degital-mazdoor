@@ -23,6 +23,7 @@ import { checkAlerts, registerAlertRoutes } from "./alerts.js";
 import { registerToolRoutes } from "./tools.js";
 import { registerKeywordFullRoutes } from "./keyword-full.js";
 import { registerDiscoveryRoutes } from "./discovery.js";
+import { registerAiRoutes } from "./ai.js";
 
 const PORT = Number(process.env["PORT"] ?? 3001);
 
@@ -60,6 +61,7 @@ export function buildServer(): ReturnType<typeof Fastify> {
   registerToolRoutes(app, etsy);
   registerKeywordFullRoutes(app, etsy);
   registerDiscoveryRoutes(app, etsy);
+  registerAiRoutes(app, etsy);
 
   app.get("/health", async () => ({
     ok: true,

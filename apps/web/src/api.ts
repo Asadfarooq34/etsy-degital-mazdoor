@@ -460,6 +460,10 @@ export interface ShopAnalyticsResult {
   note: string;
 }
 
+export interface AiStatus {
+  ready: boolean;
+}
+
 export const api = {
   health: () => req<Health>("/health"),
   keywordOverview: (keyword: string) =>
@@ -546,6 +550,27 @@ export const api = {
     ),
   shopAnalytics: (shop: string) =>
     req<ShopAnalyticsResult>(`/api/shop-analytics?shop=${encodeURIComponent(shop)}`),
+  aiStatus: () => req<AiStatus>("/api/ai/status"),
+  aiTitles: (keyword: string) =>
+    req<{ keyword: string; titles: string[]; grounded: boolean }>("/api/ai/titles", {
+      method: "POST",
+      body: JSON.stringify({ keyword }),
+    }),
+  aiTags: (keyword: string) =>
+    req<{ keyword: string; tags: string[]; grounded: boolean }>("/api/ai/tags", {
+      method: "POST",
+      body: JSON.stringify({ keyword }),
+    }),
+  aiDescriptions: (data: Record<string, string>) =>
+    req<{ keyword: string; descriptions: string[] }>("/api/ai/descriptions", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+  aiListing: (product: string, details: string) =>
+    req<{ product: string; title: string; tags: string[]; description: string; suggestedPrice: number; grounded: boolean }>(
+      "/api/ai/listing",
+      { method: "POST", body: JSON.stringify({ product, details }) },
+    ),
   seasonalCalendar: (keyword = "") =>
     req<SeasonalCalendarResult>(`/api/tools/seasonal-calendar?keyword=${encodeURIComponent(keyword)}`),
   keywordLists: () => req<{ lists: KeywordList[] }>("/api/tools/keyword-lists"),
