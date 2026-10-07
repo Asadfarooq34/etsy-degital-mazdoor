@@ -19,6 +19,16 @@ const PORT = Number(process.env["PORT"] ?? 3001);
 
 export function buildServer(): ReturnType<typeof Fastify> {
   const app = Fastify({ logger: true });
+  // The local web UI runs on a different origin (localhost:5173 vs 127.0.0.1:3001).
+  // This server binds to 127.0.0.1 only, so permissive CORS is safe here.
+  app.addHook("onRequest", async (request, reply) => {
+    reply.header("Access-Control-Allow-Origin", "*");
+    reply.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+    reply.header("Access-Control-Allow-Headers", "Content-Type");
+    if (request.method === "OPTIONS") {
+      await reply.code(204).send();
+    }
+  });
   const etsy = new EtsyClient();
   console.log(
     `[api] Etsy mode=${etsy.effectiveMode} keyPresent=${!!process.env["ETSY_API_KEY"]} cwd=${process.cwd()}`,
