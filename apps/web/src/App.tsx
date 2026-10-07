@@ -66,10 +66,29 @@ const NAV: { section: string; items: { id: Page; label: string; soon?: boolean }
 
 export default function App() {
   const [page, setPage] = useState<Page>("overview");
+  const [navOpen, setNavOpen] = useState(false);
+
+  const go = (id: Page) => {
+    setPage(id);
+    setNavOpen(false);
+  };
 
   return (
     <div className="app">
-      <aside className="sidebar">
+      <button
+        className="nav-toggle"
+        aria-label={navOpen ? "Close navigation" : "Open navigation"}
+        aria-expanded={navOpen}
+        onClick={() => setNavOpen((v) => !v)}
+      >
+        {navOpen ? "✕" : "☰"}
+      </button>
+      <div
+        className={`nav-scrim ${navOpen ? "open" : ""}`}
+        onClick={() => setNavOpen(false)}
+        aria-hidden="true"
+      />
+      <aside className={`sidebar ${navOpen ? "open" : ""}`}>
         <div className="brand">
           <div className="brand-mark">DM</div>
           <div>
@@ -85,7 +104,7 @@ export default function App() {
               <button
                 key={item.label}
                 className={`nav-item ${page === item.id && !item.soon ? "active" : ""}`}
-                onClick={() => !item.soon && setPage(item.id)}
+                onClick={() => !item.soon && go(item.id)}
                 disabled={item.soon}
                 style={item.soon ? { opacity: 0.55, cursor: "default" } : undefined}
               >
@@ -96,7 +115,7 @@ export default function App() {
           </div>
         ))}
 
-        <div className="sidebar-foot">local-only · v0.1.0</div>
+        <div className="sidebar-foot">local-only · v0.3.0</div>
       </aside>
 
       <main className="main">

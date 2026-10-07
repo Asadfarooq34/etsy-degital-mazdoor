@@ -334,11 +334,128 @@ body {
   margin-bottom: 16px;
 }
 
+/* ---------- Mobile nav ---------- */
+.nav-toggle {
+  display: none;
+  position: fixed;
+  top: 12px;
+  left: 12px;
+  z-index: 60;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--ink-900);
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.nav-scrim {
+  display: none;
+}
+
+/* ---------- Loading / empty / focus ---------- */
+.skeleton {
+  background: linear-gradient(90deg, var(--border) 25%, #f4f1fb 50%, var(--border) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite;
+  border-radius: 8px;
+  min-height: 14px;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+  vertical-align: -2px;
+  margin-right: 8px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--ink-400);
+}
+
+.empty-state .empty-icon {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.empty-state .empty-title {
+  font-weight: 600;
+  color: var(--ink-600);
+  margin-bottom: 4px;
+}
+
+.btn:focus-visible,
+.nav-item:focus-visible,
+.input:focus-visible,
+.select:focus-visible {
+  outline: 2px solid var(--purple-500);
+  outline-offset: 2px;
+}
+
 @media (max-width: 900px) {
   .grid-4 {
     grid-template-columns: 1fr 1fr;
   }
   .grid-2 {
     grid-template-columns: 1fr;
+  }
+  .nav-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .nav-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(30, 27, 46, 0.5);
+    z-index: 55;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .nav-scrim.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 58;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    width: 260px;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  .main {
+    padding: 64px 16px 28px;
+    max-width: 100%;
+  }
+  .row {
+    flex-wrap: wrap;
   }
 }
