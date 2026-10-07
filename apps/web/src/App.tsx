@@ -17,6 +17,7 @@ import Alerts from "./pages/Alerts";
 import TopSellers from "./pages/TopSellers";
 import TagOptimizer from "./pages/TagOptimizer";
 import HotProducts from "./pages/HotProducts";
+import ListingAudit from "./pages/ListingAudit";
 import MoreTools from "./pages/MoreTools";
 
 type Page =
@@ -36,6 +37,7 @@ type Page =
   | "topsellers"
   | "tagopt"
   | "hotproducts"
+  | "listingaudit"
   | "tools"
   | "fees";
 
@@ -60,8 +62,14 @@ const NAV: { section: string; items: { id: Page; label: string; soon?: boolean }
       { id: "mtrends", label: "Monthly Trends" },
       { id: "sales", label: "Competitor Sales" },
       { id: "topsellers", label: "Top Sellers" },
-      { id: "tagopt", label: "Tag Optimizer" },
       { id: "alerts", label: "Alerts" },
+    ],
+  },
+  {
+    section: "Optimize",
+    items: [
+      { id: "tagopt", label: "Tag Optimizer" },
+      { id: "listingaudit", label: "Listing Audit" },
     ],
   },
   {
@@ -143,6 +151,8 @@ export default function App() {
         {page === "topsellers" && <TopSellers />}
         {page === "tagopt" && <TagOptimizer />}
         {page === "hotproducts" && <HotProducts />}
+        {page === "tagopt" && <TagOptimizer />}
+        {page === "listingaudit" && <ListingAudit />}
         {page === "alerts" && <Alerts />}
         {page === "tools" && <MoreTools />}
         {page === "fees" && <FeeCalculator />}

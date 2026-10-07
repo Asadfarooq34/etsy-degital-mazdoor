@@ -198,4 +198,97 @@ export function registerDiscoveryRoutes(app: FastifyInstance, etsy: EtsyClient):
       products,
     };
   });
+
+  /**
+   * GET /api/listing-audit?listingId=
+   * Score a listing's SEO: title length, tag count/quality, price positioning,
+   * engagement, age. Returns scored checks with pass/warn/fail.
+   */
+  app.get("/api/listing-audit", async (req) => {
+    const { listingId = "" } = req.query as { listingId?: string };
+    const id = Number(listingId);
+    if (!id) throw badRequest("?listingId= is required");
+
+    const listing = await etsy.getListing(id);
+    if (!listing) throw badRequest("Listing not found.");
+    const live = etsy.effectiveMode === "live";
+    const checks: { name: string; status: "pass" | "warn" | "fail"; detail: string; tip: string }[] = [];
+
+    // 1. Title length (Etsy allows 140; sweet spot 120–140 for keyword coverage).
+    const titleLen = listing.title.length;
+    checks.push({
+      name: "Title length",
+      status: titleLen >= 100 ? "pass" : titleLen >= 60 ? "warn" : "fail",
+      detail: `${titleLen} / 140 characters`,
+      tip:
+        titleLen >= 100
+          ? "Good keyword coverage."
+          : "Add more descriptive keywords — aim for 100+ characters.",
+    });
+
+    // 2. Tag count (13 max).
+    const tagCount = listing.tags.length;
+    checks.push({
+      name: "Tag count",
+      status: tagCount >= 13 ? "pass" : tagCount >= 8 ? "warn" : "fail",
+      detail: `${tagCount} / 13 tags used`,
+      tip:
+        tagCount >= 13
+          ? "All tag slots filled."
+          : `Fill all 13 tag slots — you're missing ${13 - tagCount}.`,
+    });
+
+    // 3. Tag quality: multi-word tags beat single words.
+    const multiWord = listing.tags.filter((t) => t.trim().includes(" ")).length;
+    checks.push({
+      name: "Multi-word tags",
+      status: multiWord >= 8 ? "pass" : multiWord >= 4 ? "warn" : "fail",
+      detail: `${multiWord} of ${tagCount} tags are multi-word`,
+      tip: "Multi-word tags capture long-tail searches better than single words.",
+    });
+
+    // 4. Engagement.
+    const views = listing.views ?? 0;
+    const favsView = views > 0 ? (listing.numFavorers / views) * 100 : 0;
+    checks.push({
+      name: "Engagement (favs/view)",
+      status: favsView >= 2 ? "pass" : favsView >= 1 ? "warn" : "fail",
+      detail: `${Math.round(favsView * 100) / 100}%`,
+      tip:
+        favsView >= 1
+          ? "Healthy conversion of views to favorites."
+          : "Low engagement — check thumbnail, price, and first impression.",
+    });
+
+    // 5. Price sanity (not free, not absurd).
+    const price = listing.price.amount;
+    checks.push({
+      name: "Price",
+      status: price >= 2 && price <= 500 ? "pass" : "warn",
+      detail: `$${price.toFixed(2)}`,
+      tip:
+        price < 2
+          ? "Very low — leaves money on the table and looks suspicious."
+          : price > 500
+            ? "Premium pricing — make sure perceived value matches."
+            : "Sane price point.",
+    });
+
+    const score = Math.round(
+      (checks.filter((c) => c.status === "pass").length / checks.length) * 100,
+    );
+
+    return {
+      listingId: id,
+      mode: etsy.effectiveMode,
+      degraded: etsy.degraded,
+      title: listing.title,
+      shopId: listing.shopId,
+      url: listing.url,
+      score,
+      grade: score >= 80 ? "A" : score >= 60 ? "B" : score >= 40 ? "C" : "D",
+      checks,
+      note: live ? "Scored from live listing data." : "Fixture data.",
+    };
+  });
 }

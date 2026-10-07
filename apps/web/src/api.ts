@@ -376,6 +376,25 @@ export interface HotProductsResult {
   products: HotProduct[];
 }
 
+export interface AuditCheck {
+  name: string;
+  status: "pass" | "warn" | "fail";
+  detail: string;
+  tip: string;
+}
+
+export interface ListingAuditResult {
+  listingId: number;
+  mode: "live" | "fixture";
+  title: string;
+  shopId: number;
+  url: string;
+  score: number;
+  grade: string;
+  checks: AuditCheck[];
+  note: string;
+}
+
 export const api = {
   health: () => req<Health>("/health"),
   keywordOverview: (keyword: string) =>
@@ -450,6 +469,8 @@ export const api = {
     req<HotProductsResult>(
       `/api/hot-products?keyword=${encodeURIComponent(keyword)}&minPrice=${encodeURIComponent(filters.minPrice ?? "")}&maxPrice=${encodeURIComponent(filters.maxPrice ?? "")}&minFavs=${encodeURIComponent(filters.minFavs ?? "")}&released=${encodeURIComponent(filters.released ?? "0")}`,
     ),
+  listingAudit: (listingId: string) =>
+    req<ListingAuditResult>(`/api/listing-audit?listingId=${encodeURIComponent(listingId)}`),
   seasonalCalendar: (keyword = "") =>
     req<SeasonalCalendarResult>(`/api/tools/seasonal-calendar?keyword=${encodeURIComponent(keyword)}`),
   keywordLists: () => req<{ lists: KeywordList[] }>("/api/tools/keyword-lists"),
