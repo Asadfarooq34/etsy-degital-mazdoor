@@ -23,7 +23,11 @@ npm install
 
 # 2. Configure (optional — without a key the API runs in fixture mode)
 cp apps/api/.env.example apps/api/.env
-# then put your Etsy keystring in apps/api/.env as ETSY_API_KEY=...
+# then put your Etsy keystring AND shared secret in apps/api/.env:
+#   ETSY_API_KEY=<keystring>
+#   ETSY_SHARED_SECRET=<shared_secret>
+# (Etsy requires the x-api-key header as "keystring:shared_secret" — keystring
+#  alone is rejected with 403. Both stay in .env, never committed.)
 
 # 3. Run (two terminals, or one command each)
 npm run dev:api   # → http://127.0.0.1:3001

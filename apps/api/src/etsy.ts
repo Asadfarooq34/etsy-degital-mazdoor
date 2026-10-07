@@ -7,6 +7,9 @@
  * - "fixture": no key — returns clearly-labeled fixture data so the UI and
  *               formulas are fully testable before approval. Fixture payloads
  *               carry `fixture: true` and must never be shown as real data.
+ *
+ * AUTH: Etsy requires the x-api-key header as "keystring:shared_secret"
+ * (keystring alone → 403). Both values stay server-side, from .env only.
  */
 import type { Listing, Shop } from "@digital-mazdoor/core";
 import { RateLimiter } from "./rateLimiter.js";
@@ -14,6 +17,75 @@ import { RateLimiter } from "./rateLimiter.js";
 const API_BASE = "https://openapi.etsy.com/v3/application";
 
 export type EtsyMode = "live" | "fixture";
+
+export interface SearchResult {
+  listings: (Listing & { fixture?: true })[];
+  /** Total matching listings on Etsy (real competition) — fixtures report sample size. */
+  count: number;
+}
+
+/** Raw Etsy v3 listing shape (snake_case) — mapped to our Listing type. */
+interface EtsyListingRaw {
+  listing_id: number;
+  title?: string;
+  price?: { amount?: number; divisor?: number; currency_code?: string };
+  num_favorers?: number;
+  views?: number;
+  tags?: string[];
+  taxonomy_id?: number;
+  shop_id?: number;
+  original_creation_tsz?: number;
+  creation_tsz?: number;
+  quantity?: number;
+  url?: string;
+}
+
+/** Raw Etsy v3 shop shape (snake_case). */
+interface EtsyShopRaw {
+  shop_id: number;
+  shop_name?: string;
+  transaction_sold_count?: number;
+  review_count?: number;
+  rating?: number;
+  creation_tsz?: number;
+  listing_active_count?: number;
+  url?: string;
+}
+
+function mapListing(raw: EtsyListingRaw): Listing {
+  const divisor = raw.price?.divisor || 1;
+  return {
+    listingId: raw.listing_id,
+    title: raw.title ?? "",
+    price: {
+      // Etsy sends minor units; divisor converts to major (e.g. 700/100 = $7.00)
+      amount: (raw.price?.amount ?? 0) / divisor,
+      currencyCode: raw.price?.currency_code ?? "USD",
+    },
+    numFavorers: raw.num_favorers ?? 0,
+    // views is only present if Etsy exposes it — the empirical question (PRD §11)
+    ...(raw.views !== undefined ? { views: raw.views } : {}),
+    tags: raw.tags ?? [],
+    taxonomyId: raw.taxonomy_id ?? 0,
+    shopId: raw.shop_id ?? 0,
+    originalCreationTimestamp: raw.original_creation_tsz ?? raw.creation_tsz ?? 0,
+    quantity: raw.quantity ?? 0,
+    url: raw.url ?? `https://www.etsy.com/listing/${raw.listing_id}`,
+  };
+}
+
+function mapShop(raw: EtsyShopRaw): Shop {
+  return {
+    shopId: raw.shop_id,
+    shopName: raw.shop_name ?? "",
+    transactionSoldCount: raw.transaction_sold_count ?? 0,
+    reviewCount: raw.review_count ?? 0,
+    rating: raw.rating ?? 0,
+    creationTimestamp: raw.creation_tsz ?? 0,
+    listingActiveCount: raw.listing_active_count ?? 0,
+    url: raw.url ?? `https://www.etsy.com/shop/${raw.shop_id}`,
+  };
+}
 
 const FIXTURE_LISTINGS: (Listing & { fixture: true })[] = [
   {
@@ -58,6 +130,8 @@ const FIXTURE_SHOP: Shop & { fixture: true } = {
 
 export class EtsyClient {
   readonly mode: EtsyMode;
+  private readonly keystring: string | undefined;
+  private readonly sharedSecret: string | undefined;
   private readonly limiter = new RateLimiter();
   /**
    * True once a live call is rejected with 401/403 (key not active yet).
@@ -65,13 +139,23 @@ export class EtsyClient {
    */
   degraded = false;
 
-  constructor(private readonly apiKey: string | undefined = process.env["ETSY_API_KEY"]) {
-    this.mode = apiKey ? "live" : "fixture";
+  constructor(
+    apiKey: string | undefined = process.env["ETSY_API_KEY"],
+    sharedSecret: string | undefined = process.env["ETSY_SHARED_SECRET"],
+  ) {
+    this.keystring = apiKey?.trim() || undefined;
+    this.sharedSecret = sharedSecret?.trim() || undefined;
+    this.mode = this.keystring ? "live" : "fixture";
   }
 
   /** Data provenance for responses: "live" only when truly live. */
   get effectiveMode(): "live" | "fixture" {
     return this.mode === "live" && !this.degraded ? "live" : "fixture";
+  }
+
+  /** Etsy requires x-api-key as "keystring:shared_secret" (keystring alone → 403). */
+  private get authHeader(): string {
+    return this.sharedSecret ? `${this.keystring}:${this.sharedSecret}` : this.keystring!;
   }
 
   private async get<T>(path: string): Promise<T> {
@@ -80,14 +164,16 @@ export class EtsyClient {
     }
     await this.limiter.acquire();
     const res = await fetch(`${API_BASE}${path}`, {
-      headers: { "x-api-key": this.apiKey! },
+      headers: { "x-api-key": this.authHeader },
     });
     if (res.status === 401 || res.status === 403) {
       this.degraded = true;
-      throw Object.assign(
-        new Error(`Etsy auth rejected (${res.status}) — key not active yet?`),
-        { code: "ETSY_AUTH" },
-      );
+      const body = await res.text();
+      // Log the exact Etsy error (no secrets) so misconfiguration is diagnosable.
+      console.warn(`[etsy] auth rejected (${res.status}): ${body.slice(0, 160)}`);
+      throw Object.assign(new Error(`Etsy auth rejected (${res.status})`), {
+        code: "ETSY_AUTH",
+      });
     }
     if (res.status === 429) {
       throw new Error("Etsy rate limit hit (429) — backing off");
@@ -104,18 +190,28 @@ export class EtsyClient {
     );
   }
 
-  /** Search listings by keyword. Fixture mode (or degraded) returns labeled fixtures. */
-  async searchListings(keyword: string, limit = 24): Promise<(Listing & { fixture?: true })[]> {
+  /**
+   * Search active listings by keyword.
+   * Fixture mode (or degraded) returns labeled fixtures.
+   */
+  async searchListings(keyword: string, limit = 24): Promise<SearchResult> {
     if (this.mode === "fixture" || this.degraded) {
-      return this.fixtureSearch(keyword, limit);
+      const listings = this.fixtureSearch(keyword, limit);
+      return { listings, count: listings.length };
     }
     try {
-      const data = await this.get<{ results: unknown[] }>(
-        `/listings/search?q=${encodeURIComponent(keyword)}&limit=${limit}`,
+      const data = await this.get<{ count: number; results: EtsyListingRaw[] }>(
+        `/listings/active?keywords=${encodeURIComponent(keyword)}&limit=${limit}`,
       );
-      return data.results as Listing[];
+      return {
+        listings: (data.results ?? []).map(mapListing),
+        count: data.count ?? 0,
+      };
     } catch (e) {
-      if (EtsyClient.isAuthError(e)) return this.fixtureSearch(keyword, limit);
+      if (EtsyClient.isAuthError(e)) {
+        const listings = this.fixtureSearch(keyword, limit);
+        return { listings, count: listings.length };
+      }
       throw e;
     }
   }
@@ -126,7 +222,8 @@ export class EtsyClient {
       return { ...FIXTURE_SHOP, shopId };
     }
     try {
-      return await this.get<Shop>(`/shops/${shopId}`);
+      const raw = await this.get<EtsyShopRaw>(`/shops/${shopId}`);
+      return mapShop(raw);
     } catch (e) {
       if (EtsyClient.isAuthError(e)) return { ...FIXTURE_SHOP, shopId };
       throw e;

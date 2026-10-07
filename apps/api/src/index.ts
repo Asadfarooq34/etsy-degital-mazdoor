@@ -58,8 +58,9 @@ export function buildServer(): ReturnType<typeof Fastify> {
     if (!keyword.trim()) {
       throw Object.assign(new Error("?keyword= is required"), { statusCode: 400 });
     }
-    const listings = await etsy.searchListings(keyword, 100);
-    const competition = etsy.mode === "fixture" ? 45_300 : listings.length;
+    const { listings, count } = await etsy.searchListings(keyword, 100);
+    // Competition: Etsy's real total-match count when live; fixture sample otherwise.
+    const competition = etsy.effectiveMode === "live" ? count : 45_300;
     const avgFavs =
       listings.length > 0
         ? listings.reduce((s, l) => s + l.numFavorers, 0) / listings.length
