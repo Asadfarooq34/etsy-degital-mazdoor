@@ -7,8 +7,21 @@ import Competitors from "./pages/Competitors";
 import FeeCalculator from "./pages/FeeCalculator";
 
 import CategoryReport from "./pages/CategoryReport";
+import KeywordGap from "./pages/KeywordGap";
+import BulkKeywords from "./pages/BulkKeywords";
+import RankChecker from "./pages/RankChecker";
 
-type Page = "overview" | "keywords" | "listings" | "buzz" | "competitors" | "category" | "fees";
+type Page =
+  | "overview"
+  | "keywords"
+  | "listings"
+  | "buzz"
+  | "competitors"
+  | "category"
+  | "gap"
+  | "bulk"
+  | "rank"
+  | "fees";
 
 const NAV: { section: string; items: { id: Page; label: string; soon?: boolean }[] }[] = [
   {
@@ -23,6 +36,9 @@ const NAV: { section: string; items: { id: Page; label: string; soon?: boolean }
       { id: "competitors", label: "Competitors" },
       { id: "buzz", label: "Trend Buzz" },
       { id: "category", label: "Category Report" },
+      { id: "gap", label: "Keyword Gap" },
+      { id: "bulk", label: "Bulk Keywords" },
+      { id: "rank", label: "Rank Checker" },
     ],
   },
   {
@@ -73,6 +89,9 @@ export default function App() {
         {page === "buzz" && <TrendBuzz />}
         {page === "competitors" && <Competitors />}
         {page === "category" && <CategoryReport />}
+        {page === "gap" && <KeywordGap />}
+        {page === "bulk" && <BulkKeywords />}
+        {page === "rank" && <RankChecker />}
         {page === "fees" && <FeeCalculator />}
       </main>
     </div>

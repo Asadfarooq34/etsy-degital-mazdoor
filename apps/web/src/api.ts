@@ -111,6 +111,38 @@ export interface CategoryReport {
   }[];
 }
 
+export interface KeywordGap {
+  keyword: string;
+  mode: "live" | "fixture";
+  sampleSize: number;
+  topTags: { term: string; count: number }[];
+  topTitleWords: { term: string; count: number }[];
+  own: {
+    listingId: number;
+    title: string;
+    found: boolean;
+    missingTags: { term: string; count: number }[];
+    missingWords: { term: string; count: number }[];
+  } | null;
+}
+
+export interface BulkRow {
+  keyword: string;
+  competition: number;
+  difficulty: number;
+  difficultyPass: boolean;
+  opportunity: number;
+  avgFavs: number;
+  avgViews: number | { kind: "estimated"; value: number; note: string };
+  sampleSize: number;
+}
+
+export interface RankCheckRow {
+  keyword: string;
+  hits: { rank: number; listingId: number; title: string; price: { amount: number; currencyCode: string }; url: string }[];
+  hitCount: number;
+}
+
 export const api = {
   health: () => req<Health>("/health"),
   keywordOverview: (keyword: string) =>
@@ -127,6 +159,19 @@ export const api = {
     req<CompetitorsTop>(`/api/competitors/top?keyword=${encodeURIComponent(keyword)}`),
   categoryReport: (keyword: string) =>
     req<CategoryReport>(`/api/category-report?keyword=${encodeURIComponent(keyword)}`),
+  keywordGap: (keyword: string, listing = "") =>
+    req<KeywordGap>(
+      `/api/keyword-gap?keyword=${encodeURIComponent(keyword)}&listing=${encodeURIComponent(listing)}`,
+    ),
+  bulkKeywords: (keywords: string[]) =>
+    req<{ mode: "live" | "fixture"; rows: BulkRow[] }>("/api/keywords/bulk", {
+      method: "POST",
+      body: JSON.stringify({ keywords }),
+    }),
+  rankCheck: (shop: string, keywords: string) =>
+    req<{ shop: string; shopId: number; mode: "live" | "fixture"; rows: RankCheckRow[] }>(
+      `/api/rank-check?shop=${encodeURIComponent(shop)}&keywords=${encodeURIComponent(keywords)}`,
+    ),
   feeCalculator: (input: {
     itemPrice: number;
     shippingCharged: number;

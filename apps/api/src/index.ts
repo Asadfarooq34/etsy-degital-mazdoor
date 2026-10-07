@@ -15,6 +15,8 @@ import { closeDb, getDb } from "./db.js";
 import { EtsyClient } from "./etsy.js";
 import { registerResearchRoutes } from "./research.js";
 import { registerCategoryRoutes } from "./category.js";
+import { registerGapRoutes } from "./gap.js";
+import { registerBulkRankRoutes } from "./bulkrank.js";
 
 const PORT = Number(process.env["PORT"] ?? 3001);
 
@@ -37,6 +39,8 @@ export function buildServer(): ReturnType<typeof Fastify> {
   getDb(); // ensure schema exists
   registerResearchRoutes(app, etsy);
   registerCategoryRoutes(app, etsy);
+  registerGapRoutes(app, etsy);
+  registerBulkRankRoutes(app, etsy);
 
   app.get("/health", async () => ({
     ok: true,

@@ -216,6 +216,42 @@ export class EtsyClient {
     }
   }
 
+  /** Single listing by ID (for Keyword Gap vs. own listing). */
+  async getListing(listingId: number): Promise<(Listing & { fixture?: true }) | null> {
+    if (this.mode === "fixture" || this.degraded) {
+      return FIXTURE_LISTINGS.find((l) => l.listingId === listingId) ?? null;
+    }
+    try {
+      const raw = await this.get<EtsyListingRaw>(`/listings/${listingId}`);
+      return mapListing(raw);
+    } catch (e) {
+      if (EtsyClient.isAuthError(e)) {
+        return FIXTURE_LISTINGS.find((l) => l.listingId === listingId) ?? null;
+      }
+      throw e;
+    }
+  }
+
+  /** Resolve a shop by numeric ID or name → { shopId, shopName } | null. */
+  async resolveShop(input: string): Promise<{ shopId: number; shopName: string } | null> {
+    const trimmed = input.trim();
+    if (/^\d+$/.test(trimmed)) {
+      const shop = await this.getShop(Number(trimmed));
+      return { shopId: shop.shopId, shopName: shop.shopName || `Shop #${shop.shopId}` };
+    }
+    if (this.mode === "fixture" || this.degraded) return null;
+    try {
+      const data = await this.get<{ count: number; results: EtsyShopRaw[] }>(
+        `/shops?shop_name=${encodeURIComponent(trimmed)}`,
+      );
+      const first = data.results?.[0];
+      return first ? { shopId: first.shop_id, shopName: first.shop_name ?? trimmed } : null;
+    } catch (e) {
+      if (EtsyClient.isAuthError(e)) return null;
+      throw e;
+    }
+  }
+
   /** Shop details incl. public lifetime sales total. */
   async getShop(shopId: number): Promise<Shop & { fixture?: true }> {
     if (this.mode === "fixture" || this.degraded) {
