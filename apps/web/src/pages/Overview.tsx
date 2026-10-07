@@ -1,7 +1,21 @@
 import { useEffect, useState } from "react";
 import { api, type Health } from "../api";
+import { ModeBadge } from "../components";
 
-export default function Overview() {
+const QUICK_LINKS = [
+  { label: "Keywords", desc: "Full keyword overview with difficulty & ideas", page: "keywords" },
+  { label: "Top Sellers", desc: "Rank shops by real lifetime sales", page: "topsellers" },
+  { label: "Tag Optimizer", desc: "Score your 13 tags", page: "tagopt" },
+  { label: "Trend Buzz", desc: "Emerging keywords by heat index", page: "buzz" },
+  { label: "Competitor Sales", desc: "Track shops, daily velocity", page: "sales" },
+  { label: "Trends", desc: "12-month demand & seasonality", page: "trends" },
+];
+
+export default function Overview({
+  go,
+}: {
+  go: (page: string) => void;
+}) {
   const [health, setHealth] = useState<Health | null>(null);
   const [error, setError] = useState("");
 
@@ -29,74 +43,73 @@ export default function Overview() {
           <div className="stat-note">http://127.0.0.1:3001</div>
         </div>
         <div className="stat">
-          <div className="stat-label">Etsy data mode</div>
+          <div className="stat-label">Etsy data</div>
           <div className="stat-value">
-            {health ? (
-              health.etsy === "live" ? (
-                <span className="badge badge-live">LIVE</span>
-              ) : (
-                <span className="badge badge-fixture">FIXTURE</span>
-              )
-            ) : (
-              "…"
-            )}
+            {health ? <ModeBadge mode={health.etsy} /> : "…"}
           </div>
           <div className="stat-note">{health?.note ?? "checking…"}</div>
         </div>
         <div className="stat">
-          <div className="stat-label">Tracked keywords</div>
-          <div className="stat-value">0</div>
-          <div className="stat-note">tracking starts once the key is active</div>
+          <div className="stat-label">Research modules</div>
+          <div className="stat-value">20</div>
+          <div className="stat-note">keywords → sales → tools</div>
         </div>
         <div className="stat">
-          <div className="stat-label">Snapshots stored</div>
-          <div className="stat-value">0</div>
-          <div className="stat-note">SQLite · local only</div>
+          <div className="stat-label">Data honesty</div>
+          <div className="stat-value">100%</div>
+          <div className="stat-note">measured or labeled — never invented</div>
         </div>
       </div>
 
       <div className="card" style={{ marginTop: 16 }}>
-        <h3>Build status</h3>
-        <table className="table">
-          <thead>
-            <tr>
-              <th>Module</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>Project scaffold (TypeScript strict, tests, git)</td>
-              <td>
-                <span className="badge badge-live">done</span>
-              </td>
-            </tr>
-            <tr>
-              <td>Core formulas (KD, opportunity, heat index, fees) + tests</td>
-              <td>
-                <span className="badge badge-live">done</span>
-              </td>
-            </tr>
-            <tr>
-              <td>Fee calculator (end-to-end)</td>
-              <td>
-                <span className="badge badge-live">done</span>
-              </td>
-            </tr>
-            <tr>
-              <td>Live Etsy data</td>
-              <td>
-                <span className="badge badge-fixture">waiting on key approval</span>
-              </td>
-            </tr>
-            <tr>
-              <td>Keyword research, tracking, AI agent</td>
-              <td>
-                <span className="badge badge-fixture">next phases</span>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+        <h3>Start researching</h3>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
+            gap: 12,
+          }}
+        >
+          {QUICK_LINKS.map((q) => (
+            <button
+              key={q.page}
+              onClick={() => go(q.page)}
+              style={{
+                textAlign: "left",
+                background: "var(--purple-50)",
+                border: "1px solid var(--border)",
+                borderRadius: "var(--radius)",
+                padding: 14,
+                cursor: "pointer",
+                fontFamily: "var(--font)",
+              }}
+            >
+              <div style={{ fontWeight: 700, marginBottom: 4 }}>{q.label}</div>
+              <div className="stat-note">{q.desc}</div>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="card">
+        <h3>How it works</h3>
+        <div className="stat-note" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div>
+            <strong>1. Pick a keyword</strong> — start with Keywords for the full overview.
+          </div>
+          <div>
+            <strong>2. Size up competition</strong> — Competitors and Top Sellers show who you&apos;re
+            up against.
+          </div>
+          <div>
+            <strong>3. Find your edge</strong> — Keyword Gap and Tag Optimizer reveal what
+            others are missing.
+          </div>
+          <div>
+            <strong>4. Track over time</strong> — Competitor Sales and Alerts build history while
+            the API runs.
+          </div>
+        </div>
       </div>
     </div>
   );

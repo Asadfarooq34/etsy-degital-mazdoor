@@ -125,7 +125,7 @@ export default function App() {
       </aside>
 
       <main className="main">
-        {page === "overview" && <Overview />}
+        {page === "overview" && <Overview go={(p) => go(p as Page)} />}
         {page === "keywords" && <Keywords />}
         {page === "listings" && <Listings />}
         {page === "buzz" && <TrendBuzz />}
