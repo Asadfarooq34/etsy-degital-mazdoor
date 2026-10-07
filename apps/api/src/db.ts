@@ -1,11 +1,12 @@
 /**
- * SQLite storage (better-sqlite3). Local file only — never leaves this machine.
+ * SQLite storage (Node's built-in node:sqlite — no native addons).
+ * Local file only — never leaves this machine.
  * Holds the API cache and the historical polling data that powers
  * day-over-day deltas, rank tracking, and trend charts (PRD §5.15, §7).
  */
-import Database from "better-sqlite3";
+import { DatabaseSync } from "node:sqlite";
 import { existsSync, mkdirSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS keyword_snapshots (
@@ -61,21 +62,21 @@ CREATE INDEX IF NOT EXISTS idx_listing_snapshots_at ON listing_snapshots(snapsho
 CREATE INDEX IF NOT EXISTS idx_shop_snapshots_at ON shop_snapshots(snapshot_at);
 `;
 
-let db: Database.Database | undefined;
+let db: DatabaseSync | undefined;
 
-export function getDb(dataDir?: string): Database.Database {
+export function getDb(dataDir?: string): DatabaseSync {
   if (db) return db;
   const dir = dataDir ?? join(process.cwd(), "data");
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  db = new Database(join(dir, "digital-mazdoor.db"));
-  db.pragma("journal_mode = WAL");
+  db = new DatabaseSync(join(dir, "digital-mazdoor.db"));
+  db.exec("PRAGMA journal_mode = WAL");
   db.exec(SCHEMA);
   return db;
 }
 
 /** For tests: throwaway in-memory database. */
-export function getTestDb(): Database.Database {
-  const testDb = new Database(":memory:");
+export function getTestDb(): DatabaseSync {
+  const testDb = new DatabaseSync(":memory:");
   testDb.exec(SCHEMA);
   return testDb;
 }
@@ -86,7 +87,7 @@ export function closeDb(): void {
 }
 
 /** Latest lifetime-sales snapshot per shop — the input to salesVelocity(). */
-export function latestShopSales(db: Database.Database): { shopId: number; lifetimeSales: number }[] {
+export function latestShopSales(db: DatabaseSync): { shopId: number; lifetimeSales: number }[] {
   return db
     .prepare(
       `SELECT shop_id AS shopId, lifetime_sales AS lifetimeSales
