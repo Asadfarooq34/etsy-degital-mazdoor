@@ -1,6 +1,7 @@
 /**
  * Research routes (PRD §5.15): Listings, Trend Buzz, Competitors.
- * Fixture mode until the Etsy key is live — every response carries `mode`.
+ * Live Etsy data when the key works; clearly-labeled fixtures otherwise.
+ * Every response carries `mode` (+ `degraded`).
  */
 import type { FastifyInstance } from "fastify";
 import {
@@ -8,13 +9,14 @@ import {
   heatIndex,
   type BuzzInput,
   type Estimated,
+  type Listing,
 } from "@digital-mazdoor/core";
-import { FIXTURE_BUZZ_TAGS, FIXTURE_LISTINGS, fixtureShopName } from "./fixtures.js";
+import { FIXTURE_BUZZ_TAGS, fixtureShopName } from "./fixtures.js";
 import type { EtsyClient } from "./etsy.js";
 
 const DAY_SECONDS = 86_400;
-/** Category benchmark favs/view ratio used for labeled estimates (fixture). */
-const FIXTURE_FAVS_VIEW_RATIO = 0.016;
+/** Category benchmark favs/view ratio used for labeled estimates. */
+const FAVS_VIEW_RATIO = 0.016;
 
 function badRequest(message: string): Error {
   return Object.assign(new Error(message), { statusCode: 400 });
@@ -31,10 +33,71 @@ function median(values: number[]): number {
   return s.length % 2 === 1 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2;
 }
 
+function avg(values: number[]): number {
+  return values.length === 0 ? 0 : values.reduce((s, v) => s + v, 0) / values.length;
+}
+
+/** Listing as returned by EtsyClient.searchListings (may carry the fixture flag). */
+type SearchedListing = Listing & { fixture?: true };
+
+/** Views: measured when Etsy exposes them, otherwise a LABELED estimate. */
+function listingViews(l: SearchedListing): number | Estimated {
+  return l.views ?? estimateViews(l.numFavorers, FAVS_VIEW_RATIO);
+}
+
+function viewsNum(v: number | Estimated): number {
+  return typeof v === "number" ? v : v.value;
+}
+
+/** Shop display name: real names need per-shop calls (rate-limited), so live mode shows the ID. */
+function shopLabel(l: SearchedListing): string {
+  return l.fixture ? fixtureShopName(l.shopId) : `Shop #${l.shopId}`;
+}
+
+/** Aggregate listing tags into Trend Buzz inputs (live mode). */
+function aggregateTags(listings: SearchedListing[], scopeLower: string): BuzzInput[] {
+  const byTag = new Map<
+    string,
+    { count: number; favs: number[]; ages: number[]; months: number[] }
+  >();
+  const nowMonth = new Date().getMonth();
+  for (const l of listings) {
+    const created = new Date(l.originalCreationTimestamp * 1000);
+    const monthIdx = (nowMonth - created.getMonth() + 12) % 12; // 0 = this month
+    for (const rawTag of l.tags) {
+      const tag = rawTag.toLowerCase();
+      if (scopeLower && !tag.includes(scopeLower)) continue;
+      let e = byTag.get(tag);
+      if (!e) {
+        e = { count: 0, favs: [], ages: [], months: new Array(12).fill(0) };
+        byTag.set(tag, e);
+      }
+      e.count += 1;
+      e.favs.push(l.numFavorers);
+      e.ages.push(ageDays(l.originalCreationTimestamp));
+      e.months[monthIdx]! += 1;
+    }
+  }
+  return [...byTag.entries()].map(([tag, e]) => {
+    const avgFavs = avg(e.favs);
+    return {
+      keyword: tag,
+      tagFrequency: e.count,
+      avgEngagement: avgFavs,
+      listings: e.count,
+      avgViews: estimateViews(Math.round(avgFavs), FAVS_VIEW_RATIO),
+      avgFavs: Math.round(avgFavs * 10) / 10,
+      listingsPerMonth: e.months,
+      medianAgeDays: Math.round(median(e.ages)),
+    };
+  });
+}
+
 export function registerResearchRoutes(app: FastifyInstance, etsy: EtsyClient): void {
   /**
-   * GET /api/listings/search?keyword=
-   * Browse live listings — table rows with age, views, views/day (PRD §5.15 Listings).
+   * GET /api/listings/search?keyword=&sort=
+   * Browse listings — table rows with age, views, views/day (PRD §5.15 Listings).
+   * Live: Etsy's active listings for the keyword. Fixture: labeled sample.
    */
   app.get("/api/listings/search", async (req) => {
     const { keyword = "", sort = "relevance" } = req.query as {
@@ -43,45 +106,41 @@ export function registerResearchRoutes(app: FastifyInstance, etsy: EtsyClient): 
     };
     if (!keyword.trim()) throw badRequest("?keyword= is required");
 
-    // Fixture path (live path plugs in here once the key is active).
-    const rows = FIXTURE_LISTINGS.map((l, i) => {
+    const { listings, count } = await etsy.searchListings(keyword, 100);
+    const live = etsy.effectiveMode === "live";
+
+    const rows = listings.map((l, i) => {
       const ad = ageDays(l.originalCreationTimestamp);
-      const views: number | Estimated =
-        l.views ?? estimateViews(l.numFavorers, FIXTURE_FAVS_VIEW_RATIO);
-      const viewsNum = typeof views === "number" ? views : views.value;
+      const views = listingViews(l);
       return {
         rank: i + 1,
         listingId: l.listingId,
         title: l.title,
-        shopName: fixtureShopName(l.shopId),
+        shopName: shopLabel(l),
         price: l.price,
         ageDays: ad,
         views,
-        viewsPerDay: Math.round((viewsNum / ad) * 10) / 10,
+        viewsPerDay: Math.round((viewsNum(views) / ad) * 10) / 10,
         numFavorers: l.numFavorers,
         tags: l.tags,
         url: l.url,
       };
     });
-    if (sort === "views") rows.sort((a, b) => {
-      const av = typeof a.views === "number" ? a.views : a.views.value;
-      const bv = typeof b.views === "number" ? b.views : b.views.value;
-      return bv - av;
-    });
+    if (sort === "views") {
+      rows.sort((a, b) => viewsNum(b.views) - viewsNum(a.views));
+    }
 
     const prices = rows.map((r) => r.price.amount);
-    const viewsNums = rows.map((r) =>
-      typeof r.views === "number" ? r.views : r.views.value,
-    );
+    const viewsNums = rows.map((r) => viewsNum(r.views));
     return {
       keyword,
       mode: etsy.effectiveMode,
       degraded: etsy.degraded,
       stats: {
         medianPrice: median(prices),
-        avgViews: Math.round(viewsNums.reduce((s, v) => s + v, 0) / viewsNums.length),
-        uniqueShops: new Set(FIXTURE_LISTINGS.map((l) => l.shopId)).size,
-        totalResults: 45_300,
+        avgViews: Math.round(avg(viewsNums)),
+        uniqueShops: new Set(listings.map((l) => l.shopId)).size,
+        totalResults: live ? count : 45_300,
       },
       listings: rows,
     };
@@ -90,21 +149,31 @@ export function registerResearchRoutes(app: FastifyInstance, etsy: EtsyClient): 
   /**
    * GET /api/trend-buzz?scope=
    * Emerging keywords by heat index = tag frequency × engagement (PRD §5.15).
+   * Live: tags aggregated from the scope's active listings. Fixture: labeled sample.
    */
   app.get("/api/trend-buzz", async (req) => {
     const { scope = "" } = req.query as { scope?: string };
-    const inputs: BuzzInput[] = FIXTURE_BUZZ_TAGS.filter(
-      (t) => !scope.trim() || t.tag.includes(scope.trim().toLowerCase()),
-    ).map((t) => ({
-      keyword: t.tag,
-      tagFrequency: t.frequency,
-      avgEngagement: t.avgEngagement,
-      listings: t.listings,
-      avgViews: estimateViews(t.avgFavs, FIXTURE_FAVS_VIEW_RATIO),
-      avgFavs: t.avgFavs,
-      listingsPerMonth: t.listingsPerMonth,
-      medianAgeDays: t.medianAgeDays,
-    }));
+    const live = etsy.effectiveMode === "live";
+
+    let inputs: BuzzInput[];
+    if (live) {
+      const kw = scope.trim() || "handmade";
+      const { listings } = await etsy.searchListings(kw, 100);
+      inputs = aggregateTags(listings, scope.trim().toLowerCase());
+    } else {
+      inputs = FIXTURE_BUZZ_TAGS.filter(
+        (t) => !scope.trim() || t.tag.includes(scope.trim().toLowerCase()),
+      ).map((t) => ({
+        keyword: t.tag,
+        tagFrequency: t.frequency,
+        avgEngagement: t.avgEngagement,
+        listings: t.listings,
+        avgViews: estimateViews(t.avgFavs, FAVS_VIEW_RATIO),
+        avgFavs: t.avgFavs,
+        listingsPerMonth: t.listingsPerMonth,
+        medianAgeDays: t.medianAgeDays,
+      }));
+    }
     return {
       scope: scope.trim(),
       mode: etsy.effectiveMode,
@@ -116,17 +185,19 @@ export function registerResearchRoutes(app: FastifyInstance, etsy: EtsyClient): 
   /**
    * GET /api/competitors/top?keyword=
    * Top listings by views with market stats + most-used tags (PRD §5.15 Competitors).
+   * Live: Etsy's active listings ranked by views (measured or labeled estimate).
    */
   app.get("/api/competitors/top", async (req) => {
     const { keyword = "" } = req.query as { keyword?: string };
     if (!keyword.trim()) throw badRequest("?keyword= is required");
 
-    const enriched = FIXTURE_LISTINGS.map((l) => {
-      const views: number | Estimated =
-        l.views ?? estimateViews(l.numFavorers, FIXTURE_FAVS_VIEW_RATIO);
-      const viewsNum = typeof views === "number" ? views : views.value;
-      return { listing: l, views, viewsNum };
-    }).sort((a, b) => b.viewsNum - a.viewsNum);
+    const { listings } = await etsy.searchListings(keyword, 100);
+    const enriched = listings
+      .map((l) => {
+        const views = listingViews(l);
+        return { listing: l, views, viewsNum: viewsNum(views) };
+      })
+      .sort((a, b) => b.viewsNum - a.viewsNum);
 
     const viewsNums = enriched.map((e) => e.viewsNum);
     const favs = enriched.map((e) => e.listing.numFavorers);
@@ -145,8 +216,8 @@ export function registerResearchRoutes(app: FastifyInstance, etsy: EtsyClient): 
       degraded: etsy.degraded,
       stats: {
         competitors: enriched.length,
-        avgViews: Math.round(viewsNums.reduce((s, v) => s + v, 0) / viewsNums.length),
-        avgFavorites: Math.round(favs.reduce((s, v) => s + v, 0) / favs.length),
+        avgViews: Math.round(avg(viewsNums)),
+        avgFavorites: Math.round(avg(favs)),
         uniqueShops: new Set(enriched.map((e) => e.listing.shopId)).size,
       },
       topTags,
@@ -154,7 +225,7 @@ export function registerResearchRoutes(app: FastifyInstance, etsy: EtsyClient): 
         rank: i + 1,
         listingId: e.listing.listingId,
         title: e.listing.title,
-        shopName: fixtureShopName(e.listing.shopId),
+        shopName: shopLabel(e.listing),
         price: e.listing.price,
         views: e.views,
         numFavorers: e.listing.numFavorers,
