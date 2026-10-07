@@ -395,6 +395,71 @@ export interface ListingAuditResult {
   note: string;
 }
 
+export interface CompetitorTag {
+  tag: string;
+  listings: number;
+  pct: number;
+  avgFavs: number;
+}
+
+export interface CompetitorTagsResult {
+  keyword: string;
+  mode: "live" | "fixture";
+  sampleSize: number;
+  tags: CompetitorTag[];
+  note: string;
+}
+
+export interface CompareListing {
+  listingId: number;
+  title: string;
+  titleLen: number;
+  tagCount: number;
+  tags: string[];
+  price: { amount: number; currencyCode: string };
+  numFavorers: number;
+  views: number;
+  favsPerView: number;
+  ageDays: number;
+  url: string;
+}
+
+export interface CompareListingsResult {
+  mode: "live" | "fixture";
+  a: CompareListing;
+  b: CompareListing;
+  note: string;
+}
+
+export interface ShopAnalyticsResult {
+  shop: {
+    shopId: number;
+    shopName: string;
+    url: string;
+    sales: number | null;
+    listingCount: number;
+  };
+  mode: "live" | "fixture";
+  stats: {
+    medianPrice: number;
+    minPrice: number;
+    maxPrice: number;
+    totalFavs: number;
+    totalViews: number;
+    avgFavsPerListing: number;
+  };
+  topTags: { tag: string; count: number }[];
+  topListings: {
+    listingId: number;
+    title: string;
+    price: { amount: number; currencyCode: string };
+    numFavorers: number;
+    views: number;
+    url: string;
+  }[];
+  note: string;
+}
+
 export const api = {
   health: () => req<Health>("/health"),
   keywordOverview: (keyword: string) =>
@@ -471,6 +536,16 @@ export const api = {
     ),
   listingAudit: (listingId: string) =>
     req<ListingAuditResult>(`/api/listing-audit?listingId=${encodeURIComponent(listingId)}`),
+  competitorTags: (keyword: string) =>
+    req<CompetitorTagsResult>(`/api/competitor-tags?keyword=${encodeURIComponent(keyword)}`),
+  competitorTagsByShop: (shop: string) =>
+    req<CompetitorTagsResult>(`/api/competitor-tags?shop=${encodeURIComponent(shop)}`),
+  compareListings: (a: string, b: string) =>
+    req<CompareListingsResult>(
+      `/api/compare-listings?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`,
+    ),
+  shopAnalytics: (shop: string) =>
+    req<ShopAnalyticsResult>(`/api/shop-analytics?shop=${encodeURIComponent(shop)}`),
   seasonalCalendar: (keyword = "") =>
     req<SeasonalCalendarResult>(`/api/tools/seasonal-calendar?keyword=${encodeURIComponent(keyword)}`),
   keywordLists: () => req<{ lists: KeywordList[] }>("/api/tools/keyword-lists"),

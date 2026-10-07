@@ -18,10 +18,19 @@ import TopSellers from "./pages/TopSellers";
 import TagOptimizer from "./pages/TagOptimizer";
 import HotProducts from "./pages/HotProducts";
 import ListingAudit from "./pages/ListingAudit";
+import CompetitorTags from "./pages/CompetitorTags";
+import CompareListings from "./pages/CompareListings";
+import SpellChecker from "./pages/SpellChecker";
+import ShopAnalytics from "./pages/ShopAnalytics";
+import { TitleGenerator, TagGenerator, DescriptionGenerator, EtsyListingPro, AIListingHelper } from "./pages/AIGenerators";
+import MyShop from "./pages/MyShop";
+import Notifications from "./pages/Notifications";
 import MoreTools from "./pages/MoreTools";
 
 type Page =
   | "overview"
+  | "myshop"
+  | "notifications"
   | "keywords"
   | "listings"
   | "buzz"
@@ -38,13 +47,56 @@ type Page =
   | "tagopt"
   | "hotproducts"
   | "listingaudit"
+  | "competitortags"
+  | "comparelistings"
+  | "spellcheck"
+  | "shopanalytics"
+  | "titlegen"
+  | "taggen"
+  | "descgen"
+  | "listingpro"
+  | "aihelper"
+  | "automate"
   | "tools"
   | "fees";
+
+/** Each tool's color identity (sidebar active pill, CTA, badges). */
+const TOOL_COLORS: Record<string, string> = {
+  hotproducts: "#dc2626",
+  keywords: "#2563eb",
+  listings: "#2563eb",
+  competitors: "#7c3aed",
+  trends: "#0d9488",
+  buzz: "#dc2626",
+  mtrends: "#2563eb",
+  topsellers: "#ea580c",
+  category: "#16a34a",
+  sales: "#16a34a",
+  gap: "#db2777",
+  bulk: "#7c3aed",
+  rank: "#e11d48",
+  alerts: "#ea580c",
+  tagopt: "#7c3aed",
+  competitortags: "#7c3aed",
+  comparelistings: "#7c3aed",
+  spellcheck: "#7c3aed",
+  shopanalytics: "#7c3aed",
+  titlegen: "#ea580c",
+  taggen: "#ea580c",
+  descgen: "#ea580c",
+  listingpro: "#db2777",
+  aihelper: "#db2777",
+  listingaudit: "#7c3aed",
+};
 
 const NAV: { section: string; items: { id: Page; label: string; soon?: boolean }[] }[] = [
   {
     section: "Home",
-    items: [{ id: "overview", label: "Overview" }],
+    items: [
+      { id: "overview", label: "Overview" },
+      { id: "myshop", label: "My Shop" },
+      { id: "notifications", label: "Notifications" },
+    ],
   },
   {
     section: "Research",
@@ -68,8 +120,18 @@ const NAV: { section: string; items: { id: Page; label: string; soon?: boolean }
   {
     section: "Optimize",
     items: [
+      { id: "shopanalytics", label: "Shop Analytics" },
       { id: "tagopt", label: "Tag Optimizer" },
+      { id: "titlegen", label: "Title Generator" },
+      { id: "taggen", label: "Tag Generator" },
+      { id: "descgen", label: "Description Generator" },
+      { id: "listingpro", label: "Etsy Listing Pro" },
+      { id: "aihelper", label: "AI Listing Helper" },
+      { id: "automate", label: "Automate Listing", soon: true },
       { id: "listingaudit", label: "Listing Audit" },
+      { id: "competitortags", label: "Competitor Tags" },
+      { id: "comparelistings", label: "Compare Listings" },
+      { id: "spellcheck", label: "Spell Checker" },
     ],
   },
   {
@@ -123,7 +185,13 @@ export default function App() {
                 className={`nav-item ${page === item.id && !item.soon ? "active" : ""}`}
                 onClick={() => !item.soon && go(item.id)}
                 disabled={item.soon}
-                style={item.soon ? { opacity: 0.55, cursor: "default" } : undefined}
+                style={
+                  item.soon
+                    ? { opacity: 0.55, cursor: "default" }
+                    : page === item.id && TOOL_COLORS[item.id]
+                      ? ({ "--nav-active": TOOL_COLORS[item.id] } as React.CSSProperties)
+                      : undefined
+                }
               >
                 <span>{item.label}</span>
                 {item.soon && <span className="nav-soon">soon</span>}
@@ -137,6 +205,8 @@ export default function App() {
 
       <main className="main">
         {page === "overview" && <Overview go={(p) => go(p as Page)} />}
+        {page === "myshop" && <MyShop />}
+        {page === "notifications" && <Notifications />}
         {page === "keywords" && <Keywords />}
         {page === "listings" && <Listings />}
         {page === "buzz" && <TrendBuzz />}
@@ -153,6 +223,15 @@ export default function App() {
         {page === "hotproducts" && <HotProducts />}
         {page === "tagopt" && <TagOptimizer />}
         {page === "listingaudit" && <ListingAudit />}
+        {page === "competitortags" && <CompetitorTags />}
+        {page === "comparelistings" && <CompareListings />}
+        {page === "spellcheck" && <SpellChecker />}
+        {page === "shopanalytics" && <ShopAnalytics />}
+        {page === "titlegen" && <TitleGenerator />}
+        {page === "taggen" && <TagGenerator />}
+        {page === "descgen" && <DescriptionGenerator />}
+        {page === "listingpro" && <EtsyListingPro />}
+        {page === "aihelper" && <AIListingHelper />}
         {page === "alerts" && <Alerts />}
         {page === "tools" && <MoreTools />}
         {page === "fees" && <FeeCalculator />}

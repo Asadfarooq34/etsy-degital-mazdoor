@@ -110,7 +110,7 @@ body {
 }
 
 .nav-item.active {
-  background: var(--purple-600);
+  background: var(--nav-active, var(--purple-600));
   color: #fff;
 }
 
@@ -282,6 +282,45 @@ body {
 }
 .btn-purple:hover {
   background: var(--purple-700);
+}
+.btn-green {
+  background: #16a34a;
+}
+.btn-green:hover {
+  background: #15803d;
+}
+.btn-pink {
+  background: #db2777;
+}
+.btn-pink:hover {
+  background: #be185d;
+}
+
+@media (max-width: 900px) {
+  .notif-grid {
+    grid-template-columns: 1fr !important;
+  }
+  /* Stack form rows on mobile */
+  .row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .row .btn {
+    width: 100%;
+  }
+  /* Tables scroll horizontally on small screens */
+  .table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  /* Stat cards: 2 per row already handled; tighten padding */
+  .card {
+    padding: 16px;
+  }
+  .page-title {
+    font-size: 22px;
+  }
 }
 
 .row {

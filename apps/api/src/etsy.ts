@@ -272,4 +272,42 @@ export class EtsyClient {
       l.title.toLowerCase().includes(firstWord),
     ).slice(0, limit);
   }
+
+  /** Find a shop by name (live: search shops endpoint; fixture: canned shop). */
+  async findShopByName(name: string): Promise<(Shop & { fixture?: true }) | null> {
+    if (this.mode === "fixture" || this.degraded) {
+      return { ...FIXTURE_SHOP, shopName: name };
+    }
+    try {
+      const raw = await this.get<{ results: EtsyShopRaw[] }>(
+        `/search/shops?shop_name=${encodeURIComponent(name)}&limit=1`,
+      );
+      const first = raw.results?.[0];
+      return first ? mapShop(first) : null;
+    } catch (e) {
+      if (EtsyClient.isAuthError(e)) return { ...FIXTURE_SHOP, shopName: name };
+      throw e;
+    }
+  }
+
+  /** List a shop's active listings (live: shop listings endpoint). */
+  async searchShopListings(
+    shopId: number,
+    limit: number,
+  ): Promise<{ listings: (Listing & { fixture?: true })[] }> {
+    if (this.mode === "fixture" || this.degraded) {
+      return { listings: FIXTURE_LISTINGS.slice(0, limit).map((l) => ({ ...l, shopId })) };
+    }
+    try {
+      const raw = await this.get<{ results: EtsyListingRaw[]; count: number }>(
+        `/shops/${shopId}/listings/active?limit=${Math.min(100, limit)}`,
+      );
+      return { listings: (raw.results ?? []).map(mapListing) };
+    } catch (e) {
+      if (EtsyClient.isAuthError(e)) {
+        return { listings: FIXTURE_LISTINGS.slice(0, limit).map((l) => ({ ...l, shopId })) };
+      }
+      throw e;
+    }
+  }
 }

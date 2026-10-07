@@ -291,4 +291,182 @@ export function registerDiscoveryRoutes(app: FastifyInstance, etsy: EtsyClient):
       note: live ? "Scored from live listing data." : "Fixture data.",
     };
   });
+
+  /**
+   * GET /api/competitor-tags?keyword= OR ?shop=
+   * Keyword mode: aggregate tags from top listings for a keyword.
+   * Shop mode: aggregate tags across a shop's listings.
+   */
+  app.get("/api/competitor-tags", async (req) => {
+    const { keyword = "", shop = "" } = req.query as { keyword?: string; shop?: string };
+    const live = etsy.effectiveMode === "live";
+
+    let listings: Awaited<ReturnType<typeof etsy.searchListings>>["listings"];
+    let label: string;
+    if (shop.trim()) {
+      const shopId = Number(shop);
+      const shopData = Number.isFinite(shopId) && shopId > 0
+        ? await etsy.getShop(shopId)
+        : await etsy.findShopByName(shop.trim());
+      if (!shopData) throw badRequest("Shop not found.");
+      ({ listings } = await etsy.searchShopListings(shopData.shopId, 100));
+      label = shopData.shopName;
+    } else {
+      if (!keyword.trim()) throw badRequest("?keyword= or ?shop= is required");
+      ({ listings } = await etsy.searchListings(keyword.trim(), 50));
+      label = keyword.trim();
+    }
+    const tagCounts = new Map<string, { count: number; favs: number }>();
+    const top = listings.slice(0, 20);
+    for (const l of top) {
+      for (const tag of l.tags) {
+        const t = tag.toLowerCase().trim();
+        if (!t) continue;
+        const cur = tagCounts.get(t) ?? { count: 0, favs: 0 };
+        cur.count += 1;
+        cur.favs += l.numFavorers;
+        tagCounts.set(t, cur);
+      }
+    }
+    const tags = [...tagCounts.entries()]
+      .map(([tag, v]) => ({
+        tag,
+        listings: v.count,
+        pct: Math.round((v.count / Math.max(1, top.length)) * 100),
+        avgFavs: Math.round(v.favs / v.count),
+      }))
+      .sort((a, b) => b.listings - a.listings)
+      .slice(0, 30);
+
+    return {
+      keyword: label,
+      mode: etsy.effectiveMode,
+      degraded: etsy.degraded,
+      sampleSize: top.length,
+      tags,
+      note: live
+        ? shop.trim()
+          ? "Tags aggregated across this shop's listings."
+          : "Tags aggregated from the top listings for this keyword."
+        : "Fixture data — connect your Etsy key for live tag analysis.",
+    };
+  });
+
+  /**
+   * GET /api/compare-listings?a=&b=
+   * Side-by-side comparison of two listings: title, tags, price, engagement, age.
+   */
+  app.get("/api/compare-listings", async (req) => {
+    const { a = "", b = "" } = req.query as { a?: string; b?: string };
+    const idA = Number(a);
+    const idB = Number(b);
+    if (!idA || !idB) throw badRequest("?a= and ?b= listing IDs are required");
+
+    const [la, lb] = await Promise.all([etsy.getListing(idA), etsy.getListing(idB)]);
+    if (!la || !lb) throw badRequest("One or both listings not found.");
+
+    const summarize = (l: NonNullable<typeof la>) => {
+      const ageDays = Math.max(
+        1,
+        Math.floor((Date.now() / 1000 - l.originalCreationTimestamp) / 86400),
+      );
+      const views = l.views ?? 0;
+      return {
+        listingId: l.listingId,
+        title: l.title,
+        titleLen: l.title.length,
+        tagCount: l.tags.length,
+        tags: l.tags,
+        price: l.price,
+        numFavorers: l.numFavorers,
+        views,
+        favsPerView: views > 0 ? Math.round((l.numFavorers / views) * 10000) / 100 : 0,
+        ageDays,
+        url: l.url,
+      };
+    };
+
+    return {
+      mode: etsy.effectiveMode,
+      degraded: etsy.degraded,
+      a: summarize(la),
+      b: summarize(lb),
+      note:
+        etsy.effectiveMode === "live"
+          ? "Live listing data."
+          : "Fixture data — connect your Etsy key for live comparison.",
+    };
+  });
+
+  /**
+   * GET /api/shop-analytics?shop=
+   * Public shop analysis: lifetime sales, listing count, price distribution,
+   * tag usage, engagement — for ANY public Etsy shop.
+   */
+  app.get("/api/shop-analytics", async (req) => {
+    const { shop = "" } = req.query as { shop?: string };
+    if (!shop.trim()) throw badRequest("?shop= name or ID is required");
+    const live = etsy.effectiveMode === "live";
+
+    const shopId = Number(shop);
+    const shopData = Number.isFinite(shopId) && shopId > 0
+      ? await etsy.getShop(shopId)
+      : await etsy.findShopByName(shop.trim());
+
+    if (!shopData) throw badRequest("Shop not found.");
+
+    const { listings } = await etsy.searchShopListings(shopData.shopId, 100);
+    const prices = listings.map((l) => l.price.amount).sort((a, b) => a - b);
+    const median = prices.length ? (prices[Math.floor(prices.length / 2)] ?? 0) : 0;
+    const totalFavs = listings.reduce((s, l) => s + l.numFavorers, 0);
+    const totalViews = listings.reduce((s, l) => s + (l.views ?? 0), 0);
+
+    const tagCounts = new Map<string, number>();
+    for (const l of listings)
+      for (const t of l.tags) {
+        const tag = t.toLowerCase().trim();
+        if (tag) tagCounts.set(tag, (tagCounts.get(tag) ?? 0) + 1);
+      }
+    const topTags = [...tagCounts.entries()]
+      .map(([tag, count]) => ({ tag, count }))
+      .sort((x, y) => y.count - x.count)
+      .slice(0, 15);
+
+    const topListings = [...listings]
+      .sort((x, y) => y.numFavorers - x.numFavorers)
+      .slice(0, 10)
+      .map((l) => ({
+        listingId: l.listingId,
+        title: l.title,
+        price: l.price,
+        numFavorers: l.numFavorers,
+        views: l.views ?? 0,
+        url: l.url,
+      }));
+
+    return {
+      shop: {
+        shopId: shopData.shopId,
+        shopName: shopData.shopName,
+        url: shopData.url,
+        sales: shopData.transactionSoldCount ?? null,
+        listingCount: listings.length,
+      },
+      mode: etsy.effectiveMode,
+      degraded: etsy.degraded,
+      stats: {
+        medianPrice: Math.round(median * 100) / 100,
+        minPrice: prices[0] ?? 0,
+        maxPrice: prices[prices.length - 1] ?? 0,
+        totalFavs,
+        totalViews,
+        avgFavsPerListing: listings.length ? Math.round(totalFavs / listings.length) : 0,
+      },
+      topTags,
+      topListings,
+      note: live
+        ? "Public shop data. Lifetime sales is Etsy's published total."
+        : "Fixture data — connect your Etsy key for live shop analytics.",
+    };
+  });
 }
