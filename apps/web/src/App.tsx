@@ -6,7 +6,9 @@ import TrendBuzz from "./pages/TrendBuzz";
 import Competitors from "./pages/Competitors";
 import FeeCalculator from "./pages/FeeCalculator";
 
-type Page = "overview" | "keywords" | "listings" | "buzz" | "competitors" | "fees";
+import CategoryReport from "./pages/CategoryReport";
+
+type Page = "overview" | "keywords" | "listings" | "buzz" | "competitors" | "category" | "fees";
 
 const NAV: { section: string; items: { id: Page; label: string; soon?: boolean }[] }[] = [
   {
@@ -20,6 +22,7 @@ const NAV: { section: string; items: { id: Page; label: string; soon?: boolean }
       { id: "listings", label: "Listings" },
       { id: "competitors", label: "Competitors" },
       { id: "buzz", label: "Trend Buzz" },
+      { id: "category", label: "Category Report" },
     ],
   },
   {
@@ -69,6 +72,7 @@ export default function App() {
         {page === "listings" && <Listings />}
         {page === "buzz" && <TrendBuzz />}
         {page === "competitors" && <Competitors />}
+        {page === "category" && <CategoryReport />}
         {page === "fees" && <FeeCalculator />}
       </main>
     </div>

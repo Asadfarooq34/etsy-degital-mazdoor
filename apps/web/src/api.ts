@@ -88,6 +88,29 @@ export interface CompetitorsTop {
   listings: ListingRow[];
 }
 
+export interface CategoryReport {
+  keyword: string;
+  mode: "live" | "fixture";
+  stats: {
+    liveListings: number;
+    medianPrice: number;
+    priceRange: [number, number];
+    avgViews: number;
+    competition: "Low" | "Medium" | "High";
+    uniqueShops: number;
+    sampleSize: number;
+  };
+  priceHistogram: { min: number; max: number; count: number }[];
+  definingTags: { tag: string; adoptionPct: number }[];
+  topListings: {
+    listingId: number;
+    title: string;
+    price: { amount: number; currencyCode: string };
+    numFavorers: number;
+    url: string;
+  }[];
+}
+
 export const api = {
   health: () => req<Health>("/health"),
   keywordOverview: (keyword: string) =>
@@ -102,6 +125,8 @@ export const api = {
     ),
   competitorsTop: (keyword: string) =>
     req<CompetitorsTop>(`/api/competitors/top?keyword=${encodeURIComponent(keyword)}`),
+  categoryReport: (keyword: string) =>
+    req<CategoryReport>(`/api/category-report?keyword=${encodeURIComponent(keyword)}`),
   feeCalculator: (input: {
     itemPrice: number;
     shippingCharged: number;

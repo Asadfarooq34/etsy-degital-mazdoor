@@ -65,3 +65,23 @@ describe("research routes (fixture mode)", () => {
     }
   });
 });
+
+describe("category report (fixture mode)", () => {
+  it("GET /api/category-report returns stats, histogram, tags and top listings", async () => {
+    const { buildServer } = await import("./index.js");
+    const app = buildServer();
+    try {
+      const res = await app.inject({ method: "GET", url: "/api/category-report?keyword=resume" });
+      expect(res.statusCode).toBe(200);
+      const body = res.json();
+      expect(body.mode).toBe("fixture");
+      expect(body.stats.liveListings).toBeGreaterThan(0);
+      expect(["Low", "Medium", "High"]).toContain(body.stats.competition);
+      expect(body.priceHistogram.length).toBeGreaterThan(0);
+      expect(body.definingTags.length).toBeGreaterThan(0);
+      expect(body.topListings.length).toBeGreaterThan(0);
+    } finally {
+      await app.close();
+    }
+  });
+});
