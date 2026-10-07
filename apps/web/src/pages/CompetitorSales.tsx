@@ -99,8 +99,8 @@ export default function CompetitorSales() {
               onKeyDown={(e) => e.key === "Enter" && void track()}
             />
           </div>
-          <button className="btn" onClick={() => void track()} disabled={loading}>
-            {loading ? "…" : "Track shop"}
+          <button className="btn btn-green" onClick={() => void track()} disabled={loading}>
+            {loading ? "…" : "Analyze →"}
           </button>
           <button
             className="btn"

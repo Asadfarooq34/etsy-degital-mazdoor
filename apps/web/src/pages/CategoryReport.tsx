@@ -51,8 +51,8 @@ export default function CategoryReportPage() {
               onKeyDown={(e) => e.key === "Enter" && void analyze()}
             />
           </div>
-          <button className="btn" onClick={() => void analyze()} disabled={loading}>
-            {loading ? "Analyzing…" : "Analyze"}
+          <button className="btn btn-green" onClick={() => void analyze()} disabled={loading}>
+            {loading ? "Analyzing…" : "Analyze →"}
           </button>
         </div>
       </div>

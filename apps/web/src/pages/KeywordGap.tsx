@@ -66,8 +66,8 @@ export default function KeywordGapPage() {
               onKeyDown={(e) => e.key === "Enter" && void analyze()}
             />
           </div>
-          <button className="btn" onClick={() => void analyze()} disabled={loading}>
-            {loading ? "Analyzing…" : "Analyze"}
+          <button className="btn btn-pink" onClick={() => void analyze()} disabled={loading}>
+            {loading ? "Analyzing…" : "Analyze →"}
           </button>
         </div>
       </div>

@@ -79,7 +79,7 @@ export default function Alerts() {
               onKeyDown={(e) => e.key === "Enter" && void track()}
             />
           </div>
-          <button className="btn" onClick={() => void track()} disabled={loading}>
+          <button className="btn btn-orange" onClick={() => void track()} disabled={loading}>
             Track
           </button>
           <button

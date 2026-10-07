@@ -63,7 +63,7 @@ export default function RankChecker() {
               onKeyDown={(e) => e.key === "Enter" && void check()}
             />
           </div>
-          <button className="btn" onClick={() => void check()} disabled={loading}>
+          <button className="btn btn-red" onClick={() => void check()} disabled={loading}>
             {loading ? "Checking…" : "Check ranks"}
           </button>
         </div>

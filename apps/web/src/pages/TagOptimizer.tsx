@@ -61,8 +61,8 @@ export default function TagOptimizer() {
               onKeyDown={(e) => e.key === "Enter" && void analyze()}
             />
           </div>
-          <button className="btn" onClick={() => void analyze()} disabled={loading}>
-            {loading ? "Scoring…" : "Score tags"}
+          <button className="btn btn-green" onClick={() => void analyze()} disabled={loading}>
+            {loading ? "Scoring…" : "Analyze Tags →"}
           </button>
         </div>
       </div>
