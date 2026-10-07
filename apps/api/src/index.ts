@@ -59,6 +59,8 @@ export function buildServer(): ReturnType<typeof Fastify> {
     // diagnostics (no secret values): helps pinpoint env-loading issues
     keyPresent: !!process.env["ETSY_API_KEY"],
     keyLength: process.env["ETSY_API_KEY"]?.length ?? 0,
+    secretPresent: !!process.env["ETSY_SHARED_SECRET"],
+    secretLength: process.env["ETSY_SHARED_SECRET"]?.length ?? 0,
     cwd: process.cwd(),
     note:
       etsy.mode === "fixture"
