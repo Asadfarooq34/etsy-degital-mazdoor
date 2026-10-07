@@ -20,6 +20,9 @@ const PORT = Number(process.env["PORT"] ?? 3001);
 export function buildServer(): ReturnType<typeof Fastify> {
   const app = Fastify({ logger: true });
   const etsy = new EtsyClient();
+  console.log(
+    `[api] Etsy mode=${etsy.effectiveMode} keyPresent=${!!process.env["ETSY_API_KEY"]} cwd=${process.cwd()}`,
+  );
   getDb(); // ensure schema exists
   registerResearchRoutes(app, etsy);
 
@@ -27,6 +30,10 @@ export function buildServer(): ReturnType<typeof Fastify> {
     ok: true,
     etsy: etsy.effectiveMode,
     degraded: etsy.degraded,
+    // diagnostics (no secret values): helps pinpoint env-loading issues
+    keyPresent: !!process.env["ETSY_API_KEY"],
+    keyLength: process.env["ETSY_API_KEY"]?.length ?? 0,
+    cwd: process.cwd(),
     note:
       etsy.mode === "fixture"
         ? "ETSY_API_KEY not set — serving labeled fixture data until the key is approved"
