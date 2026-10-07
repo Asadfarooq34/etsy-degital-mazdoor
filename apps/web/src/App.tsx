@@ -14,6 +14,7 @@ import Trends from "./pages/Trends";
 import MonthlyTrends from "./pages/MonthlyTrends";
 import CompetitorSales from "./pages/CompetitorSales";
 import Alerts from "./pages/Alerts";
+import MoreTools from "./pages/MoreTools";
 
 type Page =
   | "overview"
@@ -29,6 +30,7 @@ type Page =
   | "mtrends"
   | "sales"
   | "alerts"
+  | "tools"
   | "fees";
 
 const NAV: { section: string; items: { id: Page; label: string; soon?: boolean }[] }[] = [
@@ -55,7 +57,10 @@ const NAV: { section: string; items: { id: Page; label: string; soon?: boolean }
   },
   {
     section: "Tools",
-    items: [{ id: "fees", label: "Fee Calculator" }],
+    items: [
+      { id: "fees", label: "Fee Calculator" },
+      { id: "tools", label: "More Tools" },
+    ],
   },
 ];
 
@@ -108,6 +113,7 @@ export default function App() {
         {page === "mtrends" && <MonthlyTrends />}
         {page === "sales" && <CompetitorSales />}
         {page === "alerts" && <Alerts />}
+        {page === "tools" && <MoreTools />}
         {page === "fees" && <FeeCalculator />}
       </main>
     </div>

@@ -209,6 +209,36 @@ export interface AlertItem {
   read: number;
 }
 
+export interface AdsRoiResult {
+  revenue: number;
+  profit: number;
+  roiPct: number;
+  conversionPct: number;
+  avgCpc: number;
+  breakEvenOrders: number;
+  verdict: "profitable" | "breaking-even" | "losing-money";
+}
+
+export interface CategoryFinderResult {
+  keyword: string;
+  mode: "live" | "fixture";
+  categories: { taxonomyId: number; listings: number; sharePct: number; exampleTitle: string }[];
+  sampleSize: number;
+}
+
+export interface SeasonalCalendarResult {
+  seasons: { period: string; focus: string; prepBy: string }[];
+  keyword: string | null;
+  keywordPeak: string | null;
+}
+
+export interface KeywordList {
+  id: number;
+  name: string;
+  keywords: string[];
+  updatedAt: string;
+}
+
 export const api = {
   health: () => req<Health>("/health"),
   keywordOverview: (keyword: string) =>
@@ -267,6 +297,20 @@ export const api = {
   alertsMarkRead: (ids: number[]) =>
     req<{ ok: boolean }>("/api/alerts/read", { method: "POST", body: JSON.stringify({ ids }) }),
   alertsCheck: () => req<{ checked: boolean; raised: number }>("/api/alerts/check", { method: "POST" }),
+  adsRoi: (input: { adSpend: number; clicks: number; orders: number; avgOrderValue: number }) =>
+    req<AdsRoiResult>("/api/tools/ads-roi", { method: "POST", body: JSON.stringify(input) }),
+  categoryFinder: (keyword: string) =>
+    req<CategoryFinderResult>(`/api/tools/category-finder?keyword=${encodeURIComponent(keyword)}`),
+  seasonalCalendar: (keyword = "") =>
+    req<SeasonalCalendarResult>(`/api/tools/seasonal-calendar?keyword=${encodeURIComponent(keyword)}`),
+  keywordLists: () => req<{ lists: KeywordList[] }>("/api/tools/keyword-lists"),
+  keywordListCreate: (name: string, keywords: string[]) =>
+    req<{ id: number }>("/api/tools/keyword-lists", {
+      method: "POST",
+      body: JSON.stringify({ name, keywords }),
+    }),
+  keywordListDelete: (id: number) =>
+    req<{ deleted: boolean }>(`/api/tools/keyword-lists/${id}`, { method: "DELETE" }),
   feeCalculator: (input: {
     itemPrice: number;
     shippingCharged: number;

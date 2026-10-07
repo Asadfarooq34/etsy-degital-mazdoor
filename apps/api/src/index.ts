@@ -20,6 +20,7 @@ import { registerBulkRankRoutes } from "./bulkrank.js";
 import { registerTrendRoutes } from "./trends.js";
 import { registerSalesRoutes, snapshotAllTracked } from "./sales.js";
 import { checkAlerts, registerAlertRoutes } from "./alerts.js";
+import { registerToolRoutes } from "./tools.js";
 
 const PORT = Number(process.env["PORT"] ?? 3001);
 
@@ -47,6 +48,7 @@ export function buildServer(): ReturnType<typeof Fastify> {
   registerTrendRoutes(app, etsy);
   registerSalesRoutes(app, etsy);
   registerAlertRoutes(app, etsy);
+  registerToolRoutes(app, etsy);
 
   app.get("/health", async () => ({
     ok: true,
