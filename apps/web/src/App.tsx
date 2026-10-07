@@ -16,6 +16,7 @@ import CompetitorSales from "./pages/CompetitorSales";
 import Alerts from "./pages/Alerts";
 import TopSellers from "./pages/TopSellers";
 import TagOptimizer from "./pages/TagOptimizer";
+import HotProducts from "./pages/HotProducts";
 import MoreTools from "./pages/MoreTools";
 
 type Page =
@@ -34,6 +35,7 @@ type Page =
   | "alerts"
   | "topsellers"
   | "tagopt"
+  | "hotproducts"
   | "tools"
   | "fees";
 
@@ -45,6 +47,7 @@ const NAV: { section: string; items: { id: Page; label: string; soon?: boolean }
   {
     section: "Research",
     items: [
+      { id: "hotproducts", label: "Find Hot Products" },
       { id: "keywords", label: "Keywords" },
       { id: "listings", label: "Listings" },
       { id: "competitors", label: "Competitors" },
@@ -139,6 +142,7 @@ export default function App() {
         {page === "sales" && <CompetitorSales />}
         {page === "topsellers" && <TopSellers />}
         {page === "tagopt" && <TagOptimizer />}
+        {page === "hotproducts" && <HotProducts />}
         {page === "alerts" && <Alerts />}
         {page === "tools" && <MoreTools />}
         {page === "fees" && <FeeCalculator />}

@@ -353,6 +353,29 @@ export interface TagOptimizerResult {
   sampleSize: number;
 }
 
+export interface HotProduct {
+  listingId: number;
+  title: string;
+  shopName: string;
+  price: { amount: number; currencyCode: string };
+  ageDays: number;
+  numFavorers: number;
+  views: number;
+  favsPerDay: number;
+  favsPerView: number;
+  hotScore: number;
+  salesPerMonth: number;
+  url: string;
+}
+
+export interface HotProductsResult {
+  keyword: string;
+  mode: "live" | "fixture";
+  note: string;
+  count: number;
+  products: HotProduct[];
+}
+
 export const api = {
   health: () => req<Health>("/health"),
   keywordOverview: (keyword: string) =>
@@ -422,6 +445,10 @@ export const api = {
   tagOptimizer: (keyword: string, tags: string) =>
     req<TagOptimizerResult>(
       `/api/tag-optimizer?keyword=${encodeURIComponent(keyword)}&tags=${encodeURIComponent(tags)}`,
+    ),
+  hotProducts: (keyword: string, filters: { minPrice?: string; maxPrice?: string; minFavs?: string; released?: string }) =>
+    req<HotProductsResult>(
+      `/api/hot-products?keyword=${encodeURIComponent(keyword)}&minPrice=${encodeURIComponent(filters.minPrice ?? "")}&maxPrice=${encodeURIComponent(filters.maxPrice ?? "")}&minFavs=${encodeURIComponent(filters.minFavs ?? "")}&released=${encodeURIComponent(filters.released ?? "0")}`,
     ),
   seasonalCalendar: (keyword = "") =>
     req<SeasonalCalendarResult>(`/api/tools/seasonal-calendar?keyword=${encodeURIComponent(keyword)}`),

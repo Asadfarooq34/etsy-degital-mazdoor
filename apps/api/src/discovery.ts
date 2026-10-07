@@ -110,4 +110,92 @@ export function registerDiscoveryRoutes(app: FastifyInstance, etsy: EtsyClient):
       sampleSize: listings.length,
     };
   });
+
+  /**
+   * GET /api/hot-products?keyword=&minPrice=&maxPrice=&minFavs=&released=
+   * Discover trending products by real engagement. Hot Score = favorites velocity
+   * (favorites per day of age) blended with favorites-per-view, 0–100.
+   * ~ Sales/mo is a LABELED estimate (Etsy publishes no per-listing sales).
+   * released: 30 | 180 | 365 | 0 (all time).
+   */
+  app.get("/api/hot-products", async (req) => {
+    const {
+      keyword = "",
+      minPrice = "",
+      maxPrice = "",
+      minFavs = "",
+      released = "0",
+    } = req.query as {
+      keyword?: string;
+      minPrice?: string;
+      maxPrice?: string;
+      minFavs?: string;
+      released?: string;
+    };
+    if (!keyword.trim()) throw badRequest("?keyword= is required");
+    const live = etsy.effectiveMode === "live";
+
+    const lo = minPrice.trim() === "" ? 0 : Number(minPrice);
+    const hi = maxPrice.trim() === "" ? Infinity : Number(maxPrice);
+    const minF = minFavs.trim() === "" ? 0 : Number(minFavs);
+    const maxAge =
+      released === "30" ? 30 : released === "180" ? 180 : released === "365" ? 365 : Infinity;
+
+    const { listings } = await etsy.searchListings(keyword.trim(), 100);
+
+    const rows = listings
+      .map((l) => {
+        const ageDays = Math.max(
+          1,
+          Math.floor((Date.now() / 1000 - l.originalCreationTimestamp) / 86400),
+        );
+        const views = l.views ?? 0;
+        const favsPerDay = l.numFavorers / ageDays;
+        const favsPerView = views > 0 ? l.numFavorers / views : 0;
+        return { l, ageDays, views, favsPerDay, favsPerView };
+      })
+      .filter(
+        (r) =>
+          r.l.price.amount >= lo &&
+          r.l.price.amount <= hi &&
+          r.l.numFavorers >= minF &&
+          r.ageDays <= maxAge,
+      );
+
+    const maxFpd = Math.max(0.001, ...rows.map((r) => r.favsPerDay));
+    const maxFpv = Math.max(0.0001, ...rows.map((r) => r.favsPerView));
+    const products = rows
+      .map((r) => {
+        const hotScore = Math.round(
+          ((r.favsPerDay / maxFpd) * 0.7 + (r.favsPerView / maxFpv) * 0.3) * 100,
+        );
+        const salesPerMonth = Math.round(r.favsPerDay * 30 * 0.1 * 10) / 10;
+        return {
+          listingId: r.l.listingId,
+          title: r.l.title,
+          shopName: r.l.shopId ? `Shop #${r.l.shopId}` : "—",
+          price: r.l.price,
+          ageDays: r.ageDays,
+          numFavorers: r.l.numFavorers,
+          views: r.views,
+          favsPerDay: Math.round(r.favsPerDay * 10) / 10,
+          favsPerView: Math.round(r.favsPerView * 10000) / 100,
+          hotScore,
+          salesPerMonth,
+          url: r.l.url,
+        };
+      })
+      .sort((a, b) => b.hotScore - a.hotScore);
+
+    return {
+      keyword: keyword.trim(),
+      mode: etsy.effectiveMode,
+      degraded: etsy.degraded,
+      note: live
+        ? "Hot Score from real favorites velocity + engagement. ~Sales/mo is a labeled estimate — Etsy publishes no per-listing sales."
+        : "Fixture data — connect your Etsy key for live hot products.",
+      count: products.length,
+      products,
+    };
+  });
 }
