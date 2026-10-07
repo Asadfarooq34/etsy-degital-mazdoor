@@ -12,6 +12,8 @@ import BulkKeywords from "./pages/BulkKeywords";
 import RankChecker from "./pages/RankChecker";
 import Trends from "./pages/Trends";
 import MonthlyTrends from "./pages/MonthlyTrends";
+import CompetitorSales from "./pages/CompetitorSales";
+import Alerts from "./pages/Alerts";
 
 type Page =
   | "overview"
@@ -25,6 +27,8 @@ type Page =
   | "rank"
   | "trends"
   | "mtrends"
+  | "sales"
+  | "alerts"
   | "fees";
 
 const NAV: { section: string; items: { id: Page; label: string; soon?: boolean }[] }[] = [
@@ -45,6 +49,8 @@ const NAV: { section: string; items: { id: Page; label: string; soon?: boolean }
       { id: "rank", label: "Rank Checker" },
       { id: "trends", label: "Trends" },
       { id: "mtrends", label: "Monthly Trends" },
+      { id: "sales", label: "Competitor Sales" },
+      { id: "alerts", label: "Alerts" },
     ],
   },
   {
@@ -100,6 +106,8 @@ export default function App() {
         {page === "rank" && <RankChecker />}
         {page === "trends" && <Trends />}
         {page === "mtrends" && <MonthlyTrends />}
+        {page === "sales" && <CompetitorSales />}
+        {page === "alerts" && <Alerts />}
         {page === "fees" && <FeeCalculator />}
       </main>
     </div>

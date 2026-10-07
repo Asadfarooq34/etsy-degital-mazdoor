@@ -18,6 +18,8 @@ import { registerCategoryRoutes } from "./category.js";
 import { registerGapRoutes } from "./gap.js";
 import { registerBulkRankRoutes } from "./bulkrank.js";
 import { registerTrendRoutes } from "./trends.js";
+import { registerSalesRoutes, snapshotAllTracked } from "./sales.js";
+import { checkAlerts, registerAlertRoutes } from "./alerts.js";
 
 const PORT = Number(process.env["PORT"] ?? 3001);
 
@@ -43,6 +45,8 @@ export function buildServer(): ReturnType<typeof Fastify> {
   registerGapRoutes(app, etsy);
   registerBulkRankRoutes(app, etsy);
   registerTrendRoutes(app, etsy);
+  registerSalesRoutes(app, etsy);
+  registerAlertRoutes(app, etsy);
 
   app.get("/health", async () => ({
     ok: true,
@@ -112,7 +116,24 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   const app = buildServer();
   app
     .listen({ port: PORT, host: "127.0.0.1" })
-    .then(() => app.log.info(`Digital Mazdoor API on http://127.0.0.1:${PORT}`))
+    .then(() => {
+      app.log.info(`Digital Mazdoor API on http://127.0.0.1:${PORT}`);
+      // Daily snapshot poller for tracked shops (competitor sales velocity).
+      // Cheap, local-only, and keeps running as long as the dev server runs.
+      const etsyForPoll = new EtsyClient();
+      const poll = () =>
+        Promise.all([
+          snapshotAllTracked(etsyForPoll),
+          checkAlerts(etsyForPoll),
+        ])
+          .then(([n, raised]) => {
+            if (n > 0) app.log.info(`[sales] snapshotted ${n} tracked shops`);
+            if (raised > 0) app.log.info(`[alerts] raised ${raised} alerts`);
+          })
+          .catch((e: unknown) => app.log.warn(`[poll] failed: ${(e as Error).message}`));
+      void poll();
+      setInterval(() => void poll(), 24 * 60 * 60 * 1000).unref();
+    })
     .catch((err: unknown) => {
       app.log.error(err);
       process.exit(1);

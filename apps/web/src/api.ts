@@ -170,6 +170,45 @@ export interface MonthlyTrendsResult {
   sampleSize: number;
 }
 
+export interface TrackedShop {
+  shopId: number;
+  shopName: string;
+  addedAt: string;
+  lifetimeSales: number | null;
+  snapshotAt: string | null;
+  snapshots: number;
+}
+
+export interface ShopVelocity {
+  shopId: number;
+  mode: "live" | "fixture";
+  needsMoreData?: boolean;
+  snapshots?: number;
+  note?: string;
+  header?: {
+    lifetimeSales: number;
+    reviewCount: number;
+    rating: number;
+    listingActiveCount: number;
+  };
+  velocity?: {
+    soldYesterday: number;
+    last7Days: number;
+    last30Days: number;
+    avgPerDay: number;
+    trackingSince: string;
+  };
+  daily?: { date: string; sold: number }[];
+}
+
+export interface AlertItem {
+  id: number;
+  keyword: string;
+  message: string;
+  createdAt: string;
+  read: number;
+}
+
 export const api = {
   health: () => req<Health>("/health"),
   keywordOverview: (keyword: string) =>
@@ -203,6 +242,31 @@ export const api = {
     req<TrendsResult>(`/api/trends?keyword=${encodeURIComponent(keyword)}`),
   monthlyTrends: (keyword: string) =>
     req<MonthlyTrendsResult>(`/api/monthly-trends?keyword=${encodeURIComponent(keyword)}`),
+  trackShop: (shop: string) =>
+    req<{ tracked: boolean; shopId: number; shopName: string }>("/api/shops/track", {
+      method: "POST",
+      body: JSON.stringify({ shop }),
+    }),
+  trackedShops: () => req<{ shops: TrackedShop[] }>("/api/shops/tracked"),
+  untrackShop: (shopId: number) =>
+    req<{ untracked: boolean }>(`/api/shops/tracked/${shopId}`, { method: "DELETE" }),
+  snapshotAll: () => req<{ snapshotted: number }>("/api/shops/snapshot-all", { method: "POST" }),
+  shopVelocity: (shopId: number, days = 30) =>
+    req<ShopVelocity>(`/api/shops/${shopId}/velocity?days=${days}`),
+  alertsTrack: (keyword: string) =>
+    req<{ tracked: boolean }>("/api/alerts/track", {
+      method: "POST",
+      body: JSON.stringify({ keyword }),
+    }),
+  alertsTracked: () => req<{ keywords: { keyword: string }[]; max: number }>("/api/alerts/tracked"),
+  alertsUntrack: (keyword: string) =>
+    req<{ untracked: boolean }>(`/api/alerts/tracked/${encodeURIComponent(keyword)}`, {
+      method: "DELETE",
+    }),
+  alertsList: () => req<{ alerts: AlertItem[]; unreadCount: number }>("/api/alerts"),
+  alertsMarkRead: (ids: number[]) =>
+    req<{ ok: boolean }>("/api/alerts/read", { method: "POST", body: JSON.stringify({ ids }) }),
+  alertsCheck: () => req<{ checked: boolean; raised: number }>("/api/alerts/check", { method: "POST" }),
   feeCalculator: (input: {
     itemPrice: number;
     shippingCharged: number;

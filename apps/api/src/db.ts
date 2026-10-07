@@ -58,11 +58,25 @@ CREATE TABLE IF NOT EXISTS alerts (
   read INTEGER NOT NULL DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS tracked_shops (
+  shop_id INTEGER PRIMARY KEY,
+  shop_name TEXT NOT NULL DEFAULT '',
+  added_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_listing_snapshots_at ON listing_snapshots(snapshot_at);
 CREATE INDEX IF NOT EXISTS idx_shop_snapshots_at ON shop_snapshots(snapshot_at);
 `;
 
 let db: DatabaseSync | undefined;
+
+function migrate(db: DatabaseSync): void {
+  // Alerts feature: keyword_snapshots needs a difficulty column.
+  const cols = db.prepare(`PRAGMA table_info(keyword_snapshots)`).all() as { name: string }[];
+  if (!cols.some((c) => c.name === "difficulty")) {
+    db.exec(`ALTER TABLE keyword_snapshots ADD COLUMN difficulty REAL`);
+  }
+}
 
 export function getDb(dataDir?: string): DatabaseSync {
   if (db) return db;
@@ -71,6 +85,7 @@ export function getDb(dataDir?: string): DatabaseSync {
   db = new DatabaseSync(join(dir, "digital-mazdoor.db"));
   db.exec("PRAGMA journal_mode = WAL");
   db.exec(SCHEMA);
+  migrate(db);
   return db;
 }
 
