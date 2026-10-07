@@ -10,13 +10,39 @@ import {
 } from "./formulas.js";
 
 describe("keywordDifficulty", () => {
-  it("scores 50k competition / 20k views / 500 favs as 75", () => {
-    // 0.5×50 + 0.3×100 + 0.2×100 = 75
-    expect(keywordDifficulty({ competition: 50_000, avgViews: 20_000, avgFavs: 500 })).toBe(75);
+  it("scores 50k competition / 20k views / 500 favs / 1yr median age as 69", () => {
+    // 0.35×50 + 0.25×100 + 0.15×100 + 0.25×44.375 = 68.59 → 69
+    expect(
+      keywordDifficulty({ competition: 50_000, avgViews: 20_000, avgFavs: 500, medianAgeDays: 365 }),
+    ).toBe(69);
+  });
+
+  it("rewards young top-10 (Asad's age insight)", () => {
+    const young = keywordDifficulty({
+      competition: 50_000,
+      avgViews: 20_000,
+      avgFavs: 500,
+      medianAgeDays: 60,
+    });
+    const old = keywordDifficulty({
+      competition: 50_000,
+      avgViews: 20_000,
+      avgFavs: 500,
+      medianAgeDays: 800,
+    });
+    expect(young).toBeLessThan(old);
   });
 
   it("clamps to 0–100", () => {
-    expect(keywordDifficulty({ competition: 10_000_000, avgViews: 1e9, avgFavs: 1e6 })).toBe(100);
+    // Max realistic: 0.35×100 + 0.25×100 + 0.15×100 + 0.25×90 = 97.5 → 98
+    expect(
+      keywordDifficulty({
+        competition: 10_000_000,
+        avgViews: 1e9,
+        avgFavs: 1e6,
+        medianAgeDays: 800,
+      }),
+    ).toBe(98);
     expect(keywordDifficulty({ competition: 0, avgViews: 0, avgFavs: 0 })).toBe(0);
   });
 
