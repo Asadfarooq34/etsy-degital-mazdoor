@@ -318,6 +318,41 @@ export interface KeywordFull {
   googleNote: string;
 }
 
+export interface TopSeller {
+  shopId: number;
+  shopName: string;
+  lifetimeSales: number;
+  reviewCount: number;
+  rating: number;
+  yearOpened: number;
+  listingCount: number;
+  url: string;
+}
+
+export interface TopSellersResult {
+  keyword: string;
+  mode: "live" | "fixture";
+  note: string;
+  shops: TopSeller[];
+}
+
+export interface TagScore {
+  tag: string;
+  listingsUsing: number;
+  adoption: number;
+  verdict: "Strong" | "Moderate" | "Weak" | "Unused";
+}
+
+export interface TagOptimizerResult {
+  keyword: string;
+  mode: "live" | "fixture";
+  score: number;
+  scoreNote: string;
+  tags: TagScore[];
+  suggestions: { tag: string; listingsUsing: number; adoption: number }[];
+  sampleSize: number;
+}
+
 export const api = {
   health: () => req<Health>("/health"),
   keywordOverview: (keyword: string) =>
@@ -382,6 +417,12 @@ export const api = {
     req<AdsRoiResult>("/api/tools/ads-roi", { method: "POST", body: JSON.stringify(input) }),
   categoryFinder: (keyword: string) =>
     req<CategoryFinderResult>(`/api/tools/category-finder?keyword=${encodeURIComponent(keyword)}`),
+  topSellers: (keyword: string) =>
+    req<TopSellersResult>(`/api/top-sellers?keyword=${encodeURIComponent(keyword)}`),
+  tagOptimizer: (keyword: string, tags: string) =>
+    req<TagOptimizerResult>(
+      `/api/tag-optimizer?keyword=${encodeURIComponent(keyword)}&tags=${encodeURIComponent(tags)}`,
+    ),
   seasonalCalendar: (keyword = "") =>
     req<SeasonalCalendarResult>(`/api/tools/seasonal-calendar?keyword=${encodeURIComponent(keyword)}`),
   keywordLists: () => req<{ lists: KeywordList[] }>("/api/tools/keyword-lists"),
