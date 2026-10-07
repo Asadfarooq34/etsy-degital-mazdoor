@@ -252,6 +252,38 @@ body {
   cursor: default;
 }
 
+/* Color-coded CTAs per tool (matches RankKW's verb-driven pattern) */
+.btn-teal {
+  background: #0d9488;
+}
+.btn-teal:hover {
+  background: #0f766e;
+}
+.btn-red {
+  background: #dc2626;
+}
+.btn-red:hover {
+  background: #b91c1c;
+}
+.btn-blue {
+  background: #2563eb;
+}
+.btn-blue:hover {
+  background: #1d4ed8;
+}
+.btn-orange {
+  background: #ea580c;
+}
+.btn-orange:hover {
+  background: #c2410c;
+}
+.btn-purple {
+  background: var(--purple-600);
+}
+.btn-purple:hover {
+  background: var(--purple-700);
+}
+
 .row {
   display: flex;
   gap: 10px;

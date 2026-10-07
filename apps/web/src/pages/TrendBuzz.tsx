@@ -65,7 +65,7 @@ export default function TrendBuzz() {
               onKeyDown={(e) => e.key === "Enter" && void find()}
             />
           </div>
-          <button className="btn" onClick={() => void find()} disabled={loading}>
+          <button className="btn btn-red" onClick={() => void find()} disabled={loading}>
             {loading ? "Finding…" : "Find buzz →"}
           </button>
         </div>
@@ -121,23 +121,27 @@ export default function TrendBuzz() {
                     <td>{r.listings}</td>
                     <td>
                       {typeof r.avgViews === "number" ? (
-                        r.avgViews.toLocaleString()
+                        <span style={{ color: "#2563eb", fontWeight: 600 }}>
+                          {r.avgViews.toLocaleString()}
+                        </span>
                       ) : (
                         <>
-                          {r.avgViews.value.toLocaleString()}{" "}
+                          <span style={{ color: "#2563eb", fontWeight: 600 }}>
+                            {r.avgViews.value.toLocaleString()}
+                          </span>{" "}
                           <span className="badge badge-est">est.</span>
                         </>
                       )}
                     </td>
-                    <td>{r.avgFavs}</td>
+                    <td style={{ color: "#dc2626", fontWeight: 600 }}>{r.avgFavs}</td>
                     <td>
                       <Sparkline values={r.listingsPerMonth} />
                     </td>
-                    <td>{r.medianAgeDays}</td>
+                    <td style={{ color: "#ea580c" }}>{r.medianAgeDays}d</td>
                     <td>
                       <div
                         style={{
-                          background: "#ede9fe",
+                          background: "#ffedd5",
                           borderRadius: 8,
                           height: 10,
                           width: 120,
@@ -148,7 +152,7 @@ export default function TrendBuzz() {
                       >
                         <div
                           style={{
-                            background: "#7c3aed",
+                            background: "#ea580c",
                             borderRadius: 8,
                             height: 10,
                             width: `${r.heat}%`,

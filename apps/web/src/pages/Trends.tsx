@@ -84,8 +84,8 @@ export default function Trends() {
               onKeyDown={(e) => e.key === "Enter" && void analyze()}
             />
           </div>
-          <button className="btn" onClick={() => void analyze()} disabled={loading}>
-            {loading ? "Loading…" : "Show trends"}
+          <button className="btn btn-teal" onClick={() => void analyze()} disabled={loading}>
+            {loading ? "Loading…" : "Track →"}
           </button>
         </div>
       </div>

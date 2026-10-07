@@ -54,7 +54,7 @@ export default function HotProducts() {
               onKeyDown={(e) => e.key === "Enter" && void search()}
             />
           </div>
-          <button className="btn" onClick={() => void search()} disabled={loading}>
+          <button className="btn btn-red" onClick={() => void search()} disabled={loading}>
             {loading ? "Searching…" : "Search →"}
           </button>
         </div>

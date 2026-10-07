@@ -49,8 +49,8 @@ export default function MonthlyTrends() {
               onKeyDown={(e) => e.key === "Enter" && void analyze()}
             />
           </div>
-          <button className="btn" onClick={() => void analyze()} disabled={loading}>
-            {loading ? "Loading…" : "Analyze"}
+          <button className="btn btn-blue" onClick={() => void analyze()} disabled={loading}>
+            {loading ? "Loading…" : "Analyze →"}
           </button>
         </div>
       </div>

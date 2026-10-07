@@ -43,8 +43,8 @@ export default function TopSellers() {
               onKeyDown={(e) => e.key === "Enter" && void analyze()}
             />
           </div>
-          <button className="btn" onClick={() => void analyze()} disabled={loading}>
-            {loading ? "Ranking…" : "Rank shops"}
+          <button className="btn btn-orange" onClick={() => void analyze()} disabled={loading}>
+            {loading ? "Ranking…" : "Rank shops →"}
           </button>
         </div>
       </div>
