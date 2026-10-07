@@ -1,6 +1,20 @@
 import { useState } from "react";
 import { api, type BuzzRow } from "../api";
 
+function Sparkline({ values }: { values: number[] }) {
+  const W = 90;
+  const H = 26;
+  const max = Math.max(1, ...values);
+  const pts = values
+    .map((v, i) => `${(i / Math.max(1, values.length - 1)) * W},${H - (v / max) * (H - 4) - 2}`)
+    .join(" ");
+  return (
+    <svg width={W} height={H} style={{ display: "block" }}>
+      <polyline points={pts} fill="none" stroke="var(--purple-600)" strokeWidth={1.5} />
+    </svg>
+  );
+}
+
 function levelBadge(level: BuzzRow["level"]) {
   if (level === "High") return <span className="badge badge-live">High</span>;
   if (level === "Med") return <span className="badge badge-est">Med</span>;
@@ -60,54 +74,95 @@ export default function TrendBuzz() {
       {error && <div className="error">{error}</div>}
 
       {rows && (
-        <div className="card">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Keyword</th>
-                <th>Level</th>
-                <th>Listings</th>
-                <th>Avg favs</th>
-                <th>Median age (days)</th>
-                <th>Heat</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.keyword}>
-                  <td style={{ fontWeight: 600 }}>{r.keyword}</td>
-                  <td>{levelBadge(r.level)}</td>
-                  <td>{r.listings}</td>
-                  <td>{r.avgFavs}</td>
-                  <td>{r.medianAgeDays}</td>
-                  <td>
-                    <div
-                      style={{
-                        background: "#ede9fe",
-                        borderRadius: 8,
-                        height: 10,
-                        width: 120,
-                        display: "inline-block",
-                        verticalAlign: "middle",
-                        marginRight: 8,
-                      }}
-                    >
+        <>
+          <div className="card">
+            <h3>Buzz chart — top 12 by heat index</h3>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {[...rows]
+                .sort((a, b) => b.heat - a.heat)
+                .slice(0, 12)
+                .map((r) => (
+                  <div key={r.keyword} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ minWidth: 150 }}>{r.keyword}</span>
+                    <div style={{ flex: 1, height: 12, background: "var(--border)", borderRadius: 6 }}>
                       <div
                         style={{
-                          background: "#7c3aed",
-                          borderRadius: 8,
-                          height: 10,
                           width: `${r.heat}%`,
+                          height: "100%",
+                          background: "var(--purple-600)",
+                          borderRadius: 6,
                         }}
                       />
                     </div>
-                    {r.heat}
-                  </td>
+                    <strong style={{ minWidth: 30, textAlign: "right" }}>{r.heat}</strong>
+                  </div>
+                ))}
+            </div>
+          </div>
+          <div className="card">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Keyword</th>
+                  <th>Level</th>
+                  <th>Listings</th>
+                  <th>Avg views</th>
+                  <th>Avg favs</th>
+                  <th>Listings/month</th>
+                  <th>Median age (days)</th>
+                  <th>Heat</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.keyword}>
+                    <td style={{ fontWeight: 600 }}>{r.keyword}</td>
+                    <td>{levelBadge(r.level)}</td>
+                    <td>{r.listings}</td>
+                    <td>
+                      {typeof r.avgViews === "number" ? (
+                        r.avgViews.toLocaleString()
+                      ) : (
+                        <>
+                          {r.avgViews.value.toLocaleString()}{" "}
+                          <span className="badge badge-est">est.</span>
+                        </>
+                      )}
+                    </td>
+                    <td>{r.avgFavs}</td>
+                    <td>
+                      <Sparkline values={r.listingsPerMonth} />
+                    </td>
+                    <td>{r.medianAgeDays}</td>
+                    <td>
+                      <div
+                        style={{
+                          background: "#ede9fe",
+                          borderRadius: 8,
+                          height: 10,
+                          width: 120,
+                          display: "inline-block",
+                          verticalAlign: "middle",
+                          marginRight: 8,
+                        }}
+                      >
+                        <div
+                          style={{
+                            background: "#7c3aed",
+                            borderRadius: 8,
+                            height: 10,
+                            width: `${r.heat}%`,
+                          }}
+                        />
+                      </div>
+                      {r.heat}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
       )}
 
       {!rows && !error && (

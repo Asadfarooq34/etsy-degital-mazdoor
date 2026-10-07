@@ -11,6 +11,9 @@
 import type { FastifyInstance } from "fastify";
 import googleTrends from "google-trends-api";
 import type { EtsyClient } from "./etsy.js";
+import { estimateViews } from "@digital-mazdoor/core";
+
+const FAVS_VIEW_RATIO = 0.016;
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -145,12 +148,61 @@ export function registerTrendRoutes(app: FastifyInstance, _etsy: EtsyClient): vo
     const sellerMonths = MONTHS.map((m, i) => ({ month: m, listings: createdByMonth[i]! }));
     const peakSeller = sellerMonths.reduce((a, b) => (b.listings > a.listings ? b : a));
 
+    // Market stats from the sample.
+    const prices = listings.map((l) => l.price.amount).sort((a, b) => a - b);
+    const medianPrice = prices.length > 0 ? prices[Math.floor(prices.length / 2)]! : 0;
+    const viewsNums = listings.map((l) =>
+      l.views ?? estimateViews(l.numFavorers, FAVS_VIEW_RATIO).value,
+    );
+    const medianViews = [...viewsNums].sort((a, b) => a - b)[Math.floor(viewsNums.length / 2)] ?? 0;
+    const totalViews = viewsNums.reduce((s, v) => s + v, 0);
+    const totalFavs = listings.reduce((s, l) => s + l.numFavorers, 0);
+    const engagement = totalViews > 0 ? Math.round((totalFavs / totalViews) * 10000) / 100 : 0;
+
+    // Price distribution (10 buckets).
+    const maxP = Math.max(1, ...prices);
+    const buckets = new Array(10).fill(0) as number[];
+    for (const p of prices) {
+      buckets[Math.min(9, Math.floor((p / maxP) * 10))]! += 1;
+    }
+
+    // Tags the market relies on (adoption %).
+    const tagCount = new Map<string, number>();
+    for (const l of listings) {
+      for (const t of new Set(l.tags.map((x) => x.toLowerCase()))) {
+        tagCount.set(t, (tagCount.get(t) ?? 0) + 1);
+      }
+    }
+    const topTags = [...tagCount.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12)
+      .map(([tag, n]) => ({
+        tag,
+        adoption: listings.length > 0 ? Math.round((n / listings.length) * 100) : 0,
+      }));
+
+    // Top listings by views.
+    const topListings = listings
+      .map((l, i) => ({ l, v: viewsNums[i]! }))
+      .sort((a, b) => b.v - a.v)
+      .slice(0, 8)
+      .map(({ l, v }, i) => ({
+        rank: i + 1,
+        title: l.title,
+        price: l.price,
+        views: Math.round(v),
+        hearts: l.numFavorers,
+        url: l.url,
+      }));
+
     let demand: TrendPoint[] = [];
     try {
       demand = (await googleInterest(keyword.trim())).monthly;
     } catch {
       // Google down — Etsy side still works.
     }
+    const peakDemand = demand.length > 0 ? demand.reduce((a, b) => (b.value > a.value ? b : a)) : null;
+    const quietDemand = demand.length > 0 ? demand.reduce((a, b) => (b.value < a.value ? b : a)) : null;
 
     return {
       keyword: keyword.trim(),
@@ -164,6 +216,20 @@ export function registerTrendRoutes(app: FastifyInstance, _etsy: EtsyClient): vo
       demandNote:
         "Google web-search interest (0–100), NOT Etsy search volume. Labeled proxy.",
       sampleSize: listings.length,
+      stats: {
+        competing: listings.length,
+        medianPrice: Math.round(medianPrice * 100) / 100,
+        medianViews: Math.round(medianViews),
+        engagement,
+      },
+      peakMonth: peakDemand?.label ?? null,
+      quietestMonth: quietDemand?.label ?? null,
+      priceBuckets: buckets.map((n, i) => ({
+        range: `$${((maxP / 10) * i).toFixed(0)}–$${((maxP / 10) * (i + 1)).toFixed(0)}`,
+        listings: n,
+      })),
+      topTags,
+      topListings,
     };
   });
 }

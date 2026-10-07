@@ -65,7 +65,7 @@ export interface ListingRow {
 export interface ListingsSearch {
   keyword: string;
   mode: "live" | "fixture";
-  stats: { medianPrice: number; avgViews: number; uniqueShops: number; totalResults: number };
+  stats: { medianPrice: number; avgViews: number; engagement: number; uniqueShops: number; totalResults: number };
   listings: ListingRow[];
 }
 
@@ -168,6 +168,19 @@ export interface MonthlyTrendsResult {
   peakListingMonth: string;
   demandMonthly: TrendPoint[];
   sampleSize: number;
+  stats: { competing: number; medianPrice: number; medianViews: number; engagement: number };
+  peakMonth: string | null;
+  quietestMonth: string | null;
+  priceBuckets: { range: string; listings: number }[];
+  topTags: { tag: string; adoption: number }[];
+  topListings: {
+    rank: number;
+    title: string;
+    price: { amount: number; currencyCode: string };
+    views: number;
+    hearts: number;
+    url: string;
+  }[];
 }
 
 export interface TrackedShop {
@@ -311,9 +324,9 @@ export const api = {
     req<KeywordOverview>(`/api/keywords/overview?keyword=${encodeURIComponent(keyword)}`),
   keywordFull: (keyword: string) =>
     req<KeywordFull>(`/api/keywords/full?keyword=${encodeURIComponent(keyword)}`),
-  listingsSearch: (keyword: string, sort = "relevance") =>
+  listingsSearch: (keyword: string, sort = "relevance", minPrice = "", maxPrice = "") =>
     req<ListingsSearch>(
-      `/api/listings/search?keyword=${encodeURIComponent(keyword)}&sort=${sort}`,
+      `/api/listings/search?keyword=${encodeURIComponent(keyword)}&sort=${sort}&minPrice=${encodeURIComponent(minPrice)}&maxPrice=${encodeURIComponent(maxPrice)}`,
     ),
   trendBuzz: (scope = "") =>
     req<{ scope: string; mode: "live" | "fixture"; rows: BuzzRow[] }>(

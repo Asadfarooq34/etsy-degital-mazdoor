@@ -111,6 +111,21 @@ export default function Trends() {
           </div>
 
           <div className="card">
+            <h3>Platform breakdown</h3>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ minWidth: 120 }}>Google</span>
+              <div style={{ flex: 1, height: 10, background: "var(--border)", borderRadius: 5 }}>
+                <div style={{ width: "100%", height: "100%", background: "var(--purple-600)", borderRadius: 5 }} />
+              </div>
+              <strong>100%</strong>
+            </div>
+            <p className="stat-note" style={{ marginTop: 8 }}>
+              Only Google Trends is connected. Etsy-side trend data isn&apos;t exposed by any public
+              API.
+            </p>
+          </div>
+
+          <div className="card">
             <h3>Interest by country</h3>
             <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
               {result.countries.map((c) => (

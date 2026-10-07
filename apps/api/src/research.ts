@@ -100,16 +100,22 @@ export function registerResearchRoutes(app: FastifyInstance, etsy: EtsyClient): 
    * Live: Etsy's active listings for the keyword. Fixture: labeled sample.
    */
   app.get("/api/listings/search", async (req) => {
-    const { keyword = "", sort = "relevance" } = req.query as {
+    const { keyword = "", sort = "relevance", minPrice = "", maxPrice = "" } = req.query as {
       keyword?: string;
       sort?: string;
+      minPrice?: string;
+      maxPrice?: string;
     };
     if (!keyword.trim()) throw badRequest("?keyword= is required");
 
     const { listings, count } = await etsy.searchListings(keyword, 100);
     const live = etsy.effectiveMode === "live";
+    const lo = minPrice.trim() === "" ? 0 : Number(minPrice);
+    const hi = maxPrice.trim() === "" ? Infinity : Number(maxPrice);
 
-    const rows = listings.map((l, i) => {
+    const rows = listings
+      .filter((l) => l.price.amount >= lo && l.price.amount <= hi)
+      .map((l, i) => {
       const ad = ageDays(l.originalCreationTimestamp);
       const views = listingViews(l);
       return {
@@ -132,6 +138,9 @@ export function registerResearchRoutes(app: FastifyInstance, etsy: EtsyClient): 
 
     const prices = rows.map((r) => r.price.amount);
     const viewsNums = rows.map((r) => viewsNum(r.views));
+    const favs = rows.map((r) => r.numFavorers);
+    const totalViews = viewsNums.reduce((s, v) => s + v, 0);
+    const totalFavs = favs.reduce((s, v) => s + v, 0);
     return {
       keyword,
       mode: etsy.effectiveMode,
@@ -139,6 +148,7 @@ export function registerResearchRoutes(app: FastifyInstance, etsy: EtsyClient): 
       stats: {
         medianPrice: median(prices),
         avgViews: Math.round(avg(viewsNums)),
+        engagement: totalViews > 0 ? Math.round((totalFavs / totalViews) * 10000) / 100 : 0,
         uniqueShops: new Set(listings.map((l) => l.shopId)).size,
         totalResults: live ? count : 45_300,
       },
