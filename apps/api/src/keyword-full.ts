@@ -82,7 +82,9 @@ export function registerKeywordFullRoutes(app: FastifyInstance, etsy: EtsyClient
     const medianPrice = median(priceList);
     const totalViews = viewsList.reduce((s, v) => s + v, 0);
     const avgDailyViews = avg(listings.map((l, i) => viewsList[i]! / ages[i]!));
-    const difficulty = keywordDifficulty({ competition, avgViews, avgFavs });
+    const top10Ages = ages.slice(0, 10).sort((a, b) => a - b);
+    const medianAgeDays = top10Ages.length ? top10Ages[Math.floor(top10Ages.length / 2)]! : undefined;
+    const difficulty = keywordDifficulty({ competition, avgViews, avgFavs, medianAgeDays });
 
     // 2. Keyword ideas from tags (top tags by frequency → each is a keyword idea).
     const tagFreq = new Map<string, number>();
@@ -115,10 +117,13 @@ export function registerKeywordFullRoutes(app: FastifyInstance, etsy: EtsyClient
           // keep sample-based fallback
         }
       }
+      const iAges = withTag.map((l) => ageDays(l.originalCreationTimestamp)).sort((a, b) => a - b);
+      const iMedianAge = iAges.length ? iAges[Math.floor(iAges.length / 2)]! : undefined;
       const kd = keywordDifficulty({
         competition: ideaCompetition,
         avgViews: iAvgViews,
         avgFavs: iAvgFavs,
+        medianAgeDays: iMedianAge,
       });
       ideas.push({
         keyword: ideaKw,
