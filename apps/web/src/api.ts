@@ -239,10 +239,71 @@ export interface KeywordList {
   updatedAt: string;
 }
 
+export interface KeywordFull {
+  keyword: string;
+  mode: "live" | "fixture";
+  statistics: {
+    avgViews: number;
+    avgFavorites: number;
+    favsView: number;
+    avgPrice: number;
+    competition: number;
+  };
+  marketActivity: {
+    listingsAnalyzed: number;
+    medianPrice: number;
+    avgHearts: number;
+    totalViews: number;
+    avgViews: number;
+    avgDailyViews: number;
+    avgWeeklyViews: number;
+    dayOverDay: { views: number | null; favorites: number | null; note: string };
+  };
+  difficulty: {
+    score: number;
+    level: "EASY" | "MEDIUM" | "HARD";
+    competingListings: number;
+    medianPrice: number;
+    avgFavorites: number;
+  };
+  topListings: {
+    rank: number;
+    listingId: number;
+    title: string;
+    shopId: number;
+    price: { amount: number; currencyCode: string };
+    ageDays: number;
+    views: number;
+    viewsPerDay: number;
+    favsView: number;
+    numFavorers: number;
+    url: string;
+  }[];
+  keywordIdeas: {
+    keyword: string;
+    competition: number;
+    kd: number;
+    kdLevel: "Easy" | "Medium" | "Hard";
+    avgViews: number;
+    avgFavorites: number;
+    favsView: number;
+    tagOccurrences: number;
+    chars: number;
+    opportunity: number;
+  }[];
+  ideaCount: number;
+  competitionMix: { low: number; medium: number; high: number };
+  difficultySpread: { easy: number; medium: number; hard: number };
+  opportunities: { keyword: string; score: number }[];
+  googleNote: string;
+}
+
 export const api = {
   health: () => req<Health>("/health"),
   keywordOverview: (keyword: string) =>
     req<KeywordOverview>(`/api/keywords/overview?keyword=${encodeURIComponent(keyword)}`),
+  keywordFull: (keyword: string) =>
+    req<KeywordFull>(`/api/keywords/full?keyword=${encodeURIComponent(keyword)}`),
   listingsSearch: (keyword: string, sort = "relevance") =>
     req<ListingsSearch>(
       `/api/listings/search?keyword=${encodeURIComponent(keyword)}&sort=${sort}`,
