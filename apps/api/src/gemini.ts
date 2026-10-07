@@ -3,7 +3,9 @@
  * Key comes from GEMINI_API_KEY env only — never from the client.
  */
 
-const MODEL = "gemini-2.0-flash";
+// gemini-2.0-flash was retired by Google on 2026-06-01 (returns 404);
+// gemini-3.5-flash is the current flash-tier replacement.
+const MODEL = "gemini-3.8-flash";
 const API_BASE = "https://generativelanguage.googleapis.com/v1beta";
 
 export function geminiKey(): string | undefined {
