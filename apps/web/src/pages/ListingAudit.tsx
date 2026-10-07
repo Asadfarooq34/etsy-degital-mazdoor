@@ -48,8 +48,8 @@ export default function ListingAudit() {
               onKeyDown={(e) => e.key === "Enter" && void audit()}
             />
           </div>
-          <button className="btn" onClick={() => void audit()} disabled={loading}>
-            {loading ? "Auditing…" : "Audit listing"}
+          <button className="btn btn-green" onClick={() => void audit()} disabled={loading}>
+            {loading ? "Auditing…" : "Audit →"}
           </button>
         </div>
         <p className="stat-note">Paste the numeric listing ID from the Etsy URL.</p>
