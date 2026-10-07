@@ -17,6 +17,7 @@ import { registerResearchRoutes } from "./research.js";
 import { registerCategoryRoutes } from "./category.js";
 import { registerGapRoutes } from "./gap.js";
 import { registerBulkRankRoutes } from "./bulkrank.js";
+import { registerTrendRoutes } from "./trends.js";
 
 const PORT = Number(process.env["PORT"] ?? 3001);
 
@@ -41,6 +42,7 @@ export function buildServer(): ReturnType<typeof Fastify> {
   registerCategoryRoutes(app, etsy);
   registerGapRoutes(app, etsy);
   registerBulkRankRoutes(app, etsy);
+  registerTrendRoutes(app, etsy);
 
   app.get("/health", async () => ({
     ok: true,

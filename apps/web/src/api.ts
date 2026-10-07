@@ -143,6 +143,33 @@ export interface RankCheckRow {
   hitCount: number;
 }
 
+export interface TrendPoint {
+  month: string;
+  label: string;
+  value: number;
+}
+
+export interface TrendsResult {
+  keyword: string;
+  source: string;
+  sourceNote: string;
+  monthly: TrendPoint[];
+  peakMonth: string | null;
+  peakValue: number | null;
+  trend: "rising" | "falling" | "stable";
+  countries: { country: string; value: number }[];
+  indiaShare: number;
+}
+
+export interface MonthlyTrendsResult {
+  keyword: string;
+  mode: "live" | "fixture";
+  createdByMonth: { month: string; listings: number }[];
+  peakListingMonth: string;
+  demandMonthly: TrendPoint[];
+  sampleSize: number;
+}
+
 export const api = {
   health: () => req<Health>("/health"),
   keywordOverview: (keyword: string) =>
@@ -172,6 +199,10 @@ export const api = {
     req<{ shop: string; shopId: number; mode: "live" | "fixture"; rows: RankCheckRow[] }>(
       `/api/rank-check?shop=${encodeURIComponent(shop)}&keywords=${encodeURIComponent(keywords)}`,
     ),
+  trends: (keyword: string) =>
+    req<TrendsResult>(`/api/trends?keyword=${encodeURIComponent(keyword)}`),
+  monthlyTrends: (keyword: string) =>
+    req<MonthlyTrendsResult>(`/api/monthly-trends?keyword=${encodeURIComponent(keyword)}`),
   feeCalculator: (input: {
     itemPrice: number;
     shippingCharged: number;
