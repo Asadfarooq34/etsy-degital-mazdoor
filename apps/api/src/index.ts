@@ -3,7 +3,7 @@
  * Binds to 127.0.0.1 only: this tool never serves the public internet.
  */
 import dotenv from "dotenv";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 import Fastify from "fastify";
 // Load .env from the api package dir AND the repo root (npm runs from root,
@@ -87,7 +87,9 @@ export function buildServer(): ReturnType<typeof Fastify> {
   return app;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+// pathToFileURL: the naive `file://${process.argv[1]}` comparison breaks on
+// Windows (backslashes), which silently skipped server startup entirely.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const app = buildServer();
   app
     .listen({ port: PORT, host: "127.0.0.1" })
