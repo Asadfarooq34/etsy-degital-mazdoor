@@ -100,6 +100,78 @@ export function estimateViews(favorites: number, categoryFavsViewRatio: number):
   };
 }
 
+/** Default favs/view ratio when the category is unknown — the previous global. */
+export const DEFAULT_FAVS_VIEW_RATIO = 0.016;
+
+/**
+ * Favorites→views ratio by Etsy category (transparent heuristic, always labeled).
+ *
+ * Shopping behavior differs by category: jewelry/wedding shoppers favorite
+ * heavily before buying (higher ratio → fewer implied views per favorite);
+ * digital-download browsers favorite less per view (lower ratio → more views).
+ *
+ * Grounding:
+ * - Jewelry taxonomy node IDs 1183/1184/1209/1216 (necklaces, bracelets,
+ *   earrings, rings) verified from public Etsy API client docs; the
+ *   1050–1350 subtree range is approximate.
+ * - Digital/wedding/art detection uses listing tags (observable listing data),
+ *   checked after the digital test so "digital wedding invitation" counts as digital.
+ * - Anything unrecognized → DEFAULT_FAVS_VIEW_RATIO (no behavior change).
+ * - Refine ranges via GET /v3/application/seller-taxonomy/nodes (one cached call).
+ */
+const JEWELRY_TAXONOMY_IDS = new Set([1183, 1184, 1209, 1216]);
+const DIGITAL_TAG_HINTS = ["digital download", "instant download", "digital file", "printable"];
+const WEDDING_TAG_HINTS = ["wedding", "bride", "bridal", "groom"];
+const ART_TAG_HINTS = ["wall art", "art print", "original painting", "hand painted"];
+
+export function viewsRatioForCategory(taxonomyId?: number, tags: string[] = []): number {
+  const lowerTags = tags.map((t) => t.toLowerCase());
+  const hasHint = (hints: string[]): boolean =>
+    hints.some((h) => lowerTags.some((t) => t.includes(h)));
+  if (hasHint(DIGITAL_TAG_HINTS)) return 0.01;
+  if (typeof taxonomyId === "number" && taxonomyId > 0) {
+    if (JEWELRY_TAXONOMY_IDS.has(taxonomyId) || (taxonomyId >= 1050 && taxonomyId <= 1350)) {
+      return 0.028;
+    }
+  }
+  if (hasHint(WEDDING_TAG_HINTS)) return 0.024;
+  if (hasHint(ART_TAG_HINTS)) return 0.02;
+  return DEFAULT_FAVS_VIEW_RATIO;
+}
+
+/**
+ * Per-listing monthly sales rate from a shop's public lifetime totals.
+ * Returns undefined when the inputs can't support a sane rate (never invent one).
+ */
+export function shopPerListingPerMonth(
+  lifetimeSales: number,
+  activeListings: number,
+  shopAgeMonths: number,
+): number | undefined {
+  if (!(lifetimeSales > 0) || !(activeListings > 0) || !(shopAgeMonths > 0)) return undefined;
+  return lifetimeSales / activeListings / shopAgeMonths;
+}
+
+/**
+ * Monthly sales estimate for a listing (always rendered with the "est." badge —
+ * Etsy publishes no per-listing sales).
+ *
+ * Blends two independent signals 50/50 when both exist:
+ *   1. favorites-velocity estimate (this listing's own momentum)
+ *   2. shop-calibrated rate (the shop's lifetime sales spread across its listings)
+ * Falls back to the favorites-velocity estimate alone when shop data is missing.
+ */
+export function estimateSalesPerMonth(
+  favVelocityPerMonth: number,
+  shopPerListing?: number,
+): number {
+  const fav = Math.max(0, favVelocityPerMonth);
+  if (shopPerListing === undefined || !(shopPerListing >= 0)) {
+    return Math.round(fav * 10) / 10;
+  }
+  return Math.round((0.5 * fav + 0.5 * Math.max(0, shopPerListing)) * 10) / 10;
+}
+
 /** favorites ÷ views engagement ratio. Returns 0 when views are unknown/zero. */
 export function favsViewRatio(favorites: number, views: number): number {
   if (!(views > 0)) return 0;

@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
   calculateFees,
+  DEFAULT_FAVS_VIEW_RATIO,
+  estimateSalesPerMonth,
   estimateViews,
   favsViewRatio,
   heatIndex,
   keywordDifficulty,
   opportunityScore,
   salesVelocity,
+  shopPerListingPerMonth,
+  viewsRatioForCategory,
 } from "./formulas.js";
 
 describe("keywordDifficulty", () => {
@@ -89,6 +93,65 @@ describe("estimateViews", () => {
 
   it("rejects a non-positive ratio", () => {
     expect(() => estimateViews(100, 0)).toThrow();
+  });
+});
+
+describe("viewsRatioForCategory", () => {
+  it("returns the default for unknown/missing categories", () => {
+    expect(viewsRatioForCategory()).toBe(DEFAULT_FAVS_VIEW_RATIO);
+    expect(viewsRatioForCategory(0)).toBe(DEFAULT_FAVS_VIEW_RATIO);
+    expect(viewsRatioForCategory(999_999)).toBe(DEFAULT_FAVS_VIEW_RATIO);
+  });
+
+  it("uses the higher jewelry ratio for verified jewelry taxonomy nodes", () => {
+    for (const id of [1183, 1184, 1209, 1216]) {
+      expect(viewsRatioForCategory(id)).toBe(0.028);
+    }
+  });
+
+  it("detects digital downloads from tags (lower ratio)", () => {
+    expect(viewsRatioForCategory(1, ["Digital Download", "SVG"])).toBe(0.01);
+    expect(viewsRatioForCategory(1, ["instant download wall art"])).toBe(0.01);
+  });
+
+  it("detects wedding items from tags (higher ratio)", () => {
+    expect(viewsRatioForCategory(1, ["Wedding Invitation"])).toBe(0.024);
+  });
+
+  it("detects art from tags (medium ratio)", () => {
+    expect(viewsRatioForCategory(1, ["Wall Art Print"])).toBe(0.02);
+  });
+
+  it("prefers digital over wedding when both hints present", () => {
+    expect(viewsRatioForCategory(1, ["digital download wedding invitation"])).toBe(0.01);
+  });
+});
+
+describe("shopPerListingPerMonth", () => {
+  it("spreads lifetime sales across listings and shop age", () => {
+    // 1200 sales, 100 listings, 12 months → 1/mo per listing
+    expect(shopPerListingPerMonth(1200, 100, 12)).toBe(1);
+  });
+
+  it("returns undefined for unusable inputs instead of inventing a rate", () => {
+    expect(shopPerListingPerMonth(0, 100, 12)).toBeUndefined();
+    expect(shopPerListingPerMonth(1200, 0, 12)).toBeUndefined();
+    expect(shopPerListingPerMonth(1200, 100, 0)).toBeUndefined();
+  });
+});
+
+describe("estimateSalesPerMonth", () => {
+  it("blends favorites velocity and shop rate 50/50", () => {
+    expect(estimateSalesPerMonth(10, 4)).toBe(7);
+  });
+
+  it("falls back to favorites-only when shop data is missing", () => {
+    expect(estimateSalesPerMonth(10)).toBe(10);
+    expect(estimateSalesPerMonth(10.44)).toBe(10.4);
+  });
+
+  it("never goes negative", () => {
+    expect(estimateSalesPerMonth(-5, -2)).toBe(0);
   });
 });
 

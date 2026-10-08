@@ -11,9 +11,7 @@
 import type { FastifyInstance } from "fastify";
 import googleTrends from "google-trends-api";
 import type { EtsyClient } from "./etsy.js";
-import { estimateViews } from "@digital-mazdoor/core";
-
-const FAVS_VIEW_RATIO = 0.016;
+import { estimateViews, viewsRatioForCategory } from "@digital-mazdoor/core";
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -152,7 +150,7 @@ export function registerTrendRoutes(app: FastifyInstance, _etsy: EtsyClient): vo
     const prices = listings.map((l) => l.price.amount).sort((a, b) => a - b);
     const medianPrice = prices.length > 0 ? prices[Math.floor(prices.length / 2)]! : 0;
     const viewsNums = listings.map((l) =>
-      l.views ?? estimateViews(l.numFavorers, FAVS_VIEW_RATIO).value,
+      l.views ?? estimateViews(l.numFavorers, viewsRatioForCategory(l.taxonomyId, l.tags)).value,
     );
     const medianViews = [...viewsNums].sort((a, b) => a - b)[Math.floor(viewsNums.length / 2)] ?? 0;
     const totalViews = viewsNums.reduce((s, v) => s + v, 0);
