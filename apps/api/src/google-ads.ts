@@ -6,9 +6,12 @@
  * wherever it's available.
  *
  * Required env vars (server-side only, never exposed to the client):
- *   GOOGLE_ADS_CLIENT_ID, GOOGLE_ADS_CLIENT_SECRET,
- *   GOOGLE_ADS_DEVELOPER_TOKEN, GOOGLE_ADS_CUSTOMER_ID,
+ *   GOOGLE_ADS_CLIENT_ID, GOOGLE_ADS_CLIENT_SECRET, GOOGLE_ADS_CUSTOMER_ID,
  *   GOOGLE_ADS_REFRESH_TOKEN (obtained via the /connect OAuth flow)
+ *
+ * Deprecated (Google sunset developer tokens on 9 Sep 2026 — now ignored,
+ * and will be rejected by a future API version; never sent in requests):
+ *   GOOGLE_ADS_DEVELOPER_TOKEN
  *
  * Optional:
  *   GOOGLE_ADS_GEO  (default "2840" = United States)
@@ -24,7 +27,11 @@ const SCOPE = "https://www.googleapis.com/auth/adwords";
 export interface GoogleAdsConfig {
   clientId: string;
   clientSecret: string;
-  developerToken: string;
+  /**
+   * @deprecated Google sunset developer tokens on 9 Sep 2026.
+   * Kept as optional for backward compatibility — never sent in requests.
+   */
+  developerToken?: string | undefined;
   customerId: string; // digits only, e.g. "8335184296"
   refreshToken?: string | undefined;
   geoTarget?: string | undefined; // default "2840" (US)
@@ -34,13 +41,21 @@ export interface GoogleAdsConfig {
 export function loadConfig(): GoogleAdsConfig | null {
   const clientId = process.env.GOOGLE_ADS_CLIENT_ID?.trim();
   const clientSecret = process.env.GOOGLE_ADS_CLIENT_SECRET?.trim();
-  const developerToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN?.trim();
   const customerId = (process.env.GOOGLE_ADS_CUSTOMER_ID ?? "").replace(/\D/g, "");
-  if (!clientId || !clientSecret || !developerToken || !customerId) return null;
+  if (!clientId || !clientSecret || !customerId) return null;
+  // Developer tokens were sunset by Google on 9 Sep 2026: the header is now
+  // ignored and will be rejected by a future API version, so we never send it.
+  const legacyToken = process.env.GOOGLE_ADS_DEVELOPER_TOKEN?.trim();
+  if (legacyToken) {
+    console.warn(
+      "[google-ads] GOOGLE_ADS_DEVELOPER_TOKEN is deprecated (sunset Sep 2026) — ignoring it. " +
+        "You can safely remove it from apps/api/.env.",
+    );
+  }
   return {
     clientId,
     clientSecret,
-    developerToken,
+    developerToken: legacyToken || undefined,
     customerId,
     refreshToken: process.env.GOOGLE_ADS_REFRESH_TOKEN?.trim() || undefined,
     geoTarget: process.env.GOOGLE_ADS_GEO?.trim() || "2840",
@@ -189,9 +204,10 @@ export async function getKeywordIdeas(
   geoTarget?: string,
 ): Promise<KeywordIdeaMetrics | null> {
   const token = await accessToken(cfg);
+  // NOTE: no developer-token header — Google sunset developer tokens on
+  // 9 Sep 2026 (ignored now, rejected in a future API version).
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
-    "developer-token": cfg.developerToken,
     "Content-Type": "application/json",
   };
   if (cfg.loginCustomerId) headers["login-customer-id"] = cfg.loginCustomerId;
@@ -372,9 +388,10 @@ export async function getHistoricalVolumes(
   if (cached && Date.now() < cached.expiresAt) return cached.data;
 
   const token = await accessToken(cfg);
+  // NOTE: no developer-token header — Google sunset developer tokens on
+  // 9 Sep 2026 (ignored now, rejected in a future API version).
   const headers: Record<string, string> = {
     Authorization: `Bearer ${token}`,
-    "developer-token": cfg.developerToken,
     "Content-Type": "application/json",
   };
   if (cfg.loginCustomerId) headers["login-customer-id"] = cfg.loginCustomerId;

@@ -29,7 +29,10 @@ export function registerGoogleAdsRoutes(app: FastifyInstance): void {
       ? "Google Ads API connected — real search volume & CPC."
       : isConfigured()
         ? "Credentials present — open /api/google-ads/connect to authorize."
-        : "Not configured — set GOOGLE_ADS_* vars in apps/api/.env.",
+        : "Not configured — set GOOGLE_ADS_CLIENT_ID, GOOGLE_ADS_CLIENT_SECRET, " +
+          "GOOGLE_ADS_CUSTOMER_ID and GOOGLE_ADS_REFRESH_TOKEN in apps/api/.env.",
+    tokenSunset:
+      "Developer tokens sunset Sep 2026 — access is via your Google Cloud project's API access level.",
   }));
 
   /** Step 1: redirect to Google's OAuth consent screen. */
@@ -39,8 +42,8 @@ export function registerGoogleAdsRoutes(app: FastifyInstance): void {
       reply.code(400);
       return {
         error:
-          "Google Ads not configured. Set GOOGLE_ADS_CLIENT_ID, GOOGLE_ADS_CLIENT_SECRET, " +
-          "GOOGLE_ADS_DEVELOPER_TOKEN and GOOGLE_ADS_CUSTOMER_ID in apps/api/.env, then restart the API.",
+          "Google Ads not configured. Set GOOGLE_ADS_CLIENT_ID, GOOGLE_ADS_CLIENT_SECRET " +
+          "and GOOGLE_ADS_CUSTOMER_ID in apps/api/.env, then restart the API.",
       };
     }
     const proto = (req.headers["x-forwarded-proto"] as string) ?? "http";
