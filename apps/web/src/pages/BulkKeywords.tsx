@@ -60,7 +60,7 @@ export default function BulkKeywords() {
         </div>
         <div style={{ marginTop: 8 }}>
           <button className="btn btn-purple" onClick={() => void analyze()} disabled={loading}>
-            {loading ? "Analyzing…" : "Compare"}
+            {loading ? "Analyzing…" : "Compare →"}
           </button>
         </div>
       </div>

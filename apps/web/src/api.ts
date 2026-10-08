@@ -2,16 +2,35 @@
 
 const BASE = "http://127.0.0.1:3001";
 
-async function req<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    ...init,
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-  });
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `API error ${res.status}`);
+/** Extract a numeric listing ID from a raw ID or a full etsy.com/listing/… URL. */
+export function extractListingId(input: string): string {
+  const m = input.match(/listing\/(\d+)/);
+  return m ? m[1]! : input.trim();
+}
+
+async function req<T>(path: string, init?: RequestInit, timeoutMs = 90000): Promise<T> {
+  // Client-side timeout: the UI must never spin forever if the API stalls.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${BASE}${path}`, {
+      ...init,
+      headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
+      signal: ctrl.signal,
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(text || `API error ${res.status}`);
+    }
+    return (await res.json()) as T;
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") {
+      throw new Error("Request timed out — the API took too long, try again");
+    }
+    throw e;
+  } finally {
+    clearTimeout(timer);
   }
-  return (await res.json()) as T;
 }
 
 export interface Health {
@@ -278,6 +297,9 @@ export interface KeywordFull {
     competingListings: number;
     medianPrice: number;
     avgFavorites: number;
+    saveRatePct: number;
+    insights: string[];
+    note: string;
   };
   topListings: {
     rank: number;
@@ -539,14 +561,14 @@ export const api = {
       `/api/hot-products?keyword=${encodeURIComponent(keyword)}&minPrice=${encodeURIComponent(filters.minPrice ?? "")}&maxPrice=${encodeURIComponent(filters.maxPrice ?? "")}&minFavs=${encodeURIComponent(filters.minFavs ?? "")}&released=${encodeURIComponent(filters.released ?? "0")}`,
     ),
   listingAudit: (listingId: string) =>
-    req<ListingAuditResult>(`/api/listing-audit?listingId=${encodeURIComponent(listingId)}`),
+    req<ListingAuditResult>(`/api/listing-audit?listingId=${encodeURIComponent(extractListingId(listingId))}`),
   competitorTags: (keyword: string) =>
     req<CompetitorTagsResult>(`/api/competitor-tags?keyword=${encodeURIComponent(keyword)}`),
   competitorTagsByShop: (shop: string) =>
     req<CompetitorTagsResult>(`/api/competitor-tags?shop=${encodeURIComponent(shop)}`),
   compareListings: (a: string, b: string) =>
     req<CompareListingsResult>(
-      `/api/compare-listings?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`,
+      `/api/compare-listings?a=${encodeURIComponent(extractListingId(a))}&b=${encodeURIComponent(extractListingId(b))}`,
     ),
   shopAnalytics: (shop: string) =>
     req<ShopAnalyticsResult>(`/api/shop-analytics?shop=${encodeURIComponent(shop)}`),

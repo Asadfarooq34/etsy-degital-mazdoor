@@ -31,7 +31,10 @@ async function measureKeyword(etsy: EtsyClient, keyword: string): Promise<Keywor
     .filter((v): v is number => typeof v === "number");
   const avgViews =
     measured.length > 0 ? measured.reduce((s, v) => s + v, 0) / measured.length : avgFavs * 62.5;
-  const difficulty = keywordDifficulty({ competition, avgViews, avgFavs });
+  const difficulty = keywordDifficulty({
+    competition,
+    favsViewPct: avgViews > 0 ? (avgFavs / avgViews) * 100 : 0,
+  });
   return { competition, difficulty, avgViews };
 }
 

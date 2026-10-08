@@ -55,7 +55,7 @@ export default function CompareListings() {
       <div className="card">
         <div className="row">
           <div className="field">
-            <label htmlFor="la">Listing A (ID)</label>
+            <label htmlFor="la">Listing A (ID or URL)</label>
             <input
               id="la"
               className="input"
@@ -65,7 +65,7 @@ export default function CompareListings() {
             />
           </div>
           <div className="field">
-            <label htmlFor="lb">Listing B (ID)</label>
+            <label htmlFor="lb">Listing B (ID or URL)</label>
             <input
               id="lb"
               className="input"
@@ -75,7 +75,7 @@ export default function CompareListings() {
               onKeyDown={(e) => e.key === "Enter" && void compare()}
             />
           </div>
-          <button className="btn btn-blue" onClick={() => void compare()} disabled={loading}>
+          <button className="btn btn-purple" onClick={() => void compare()} disabled={loading}>
             {loading ? "Comparing…" : "Compare →"}
           </button>
         </div>

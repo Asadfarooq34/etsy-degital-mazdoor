@@ -100,10 +100,10 @@ export function buildServer(): ReturnType<typeof Fastify> {
       measuredViews.length > 0
         ? measuredViews.reduce((s, v) => s + v, 0) / measuredViews.length
         : estimateViews(Math.round(avgFavs), DEFAULT_FAVS_VIEW_RATIO); // "est."
+    const avgViewsNum = typeof avgViews === "number" ? avgViews : avgViews.value;
     const difficulty = keywordDifficulty({
       competition,
-      avgViews: typeof avgViews === "number" ? avgViews : avgViews.value,
-      avgFavs,
+      favsViewPct: avgViewsNum > 0 ? (avgFavs / avgViewsNum) * 100 : 0,
     });
     return {
       keyword,

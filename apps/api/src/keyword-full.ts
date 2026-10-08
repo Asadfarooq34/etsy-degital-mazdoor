@@ -15,6 +15,7 @@ import type { FastifyInstance } from "fastify";
 import {
   estimateViews,
   keywordDifficulty,
+  keywordInsights,
   opportunityScore,
   viewsRatioForCategory,
   type Estimated,
@@ -82,14 +83,10 @@ export function registerKeywordFullRoutes(app: FastifyInstance, etsy: EtsyClient
     const medianPrice = median(priceList);
     const totalViews = viewsList.reduce((s, v) => s + v, 0);
     const avgDailyViews = avg(listings.map((l, i) => viewsList[i]! / ages[i]!));
-    const top10Ages = ages.slice(0, 10).sort((a, b) => a - b);
-    const medianAgeDays = top10Ages.length ? top10Ages[Math.floor(top10Ages.length / 2)]! : undefined;
-    const difficulty = keywordDifficulty({
-      competition,
-      avgViews,
-      avgFavs,
-      ...(medianAgeDays !== undefined ? { medianAgeDays } : {}),
-    });
+    // v3 KD: competition + save rate (favs/view %) — RankKW-aligned methodology.
+    const favsViewPct = avgViews > 0 ? (avgFavs / avgViews) * 100 : 0;
+    const difficulty = keywordDifficulty({ competition, favsViewPct });
+    const insights = keywordInsights({ favsViewPct, competition });
 
     // 2. Keyword ideas from tags (top tags by frequency → each is a keyword idea).
     const tagFreq = new Map<string, number>();
@@ -122,14 +119,8 @@ export function registerKeywordFullRoutes(app: FastifyInstance, etsy: EtsyClient
           // keep sample-based fallback
         }
       }
-      const iAges = withTag.map((l) => ageDays(l.originalCreationTimestamp)).sort((a, b) => a - b);
-      const iMedianAge = iAges.length ? iAges[Math.floor(iAges.length / 2)]! : undefined;
-      const kd = keywordDifficulty({
-        competition: ideaCompetition,
-        avgViews: iAvgViews,
-        avgFavs: iAvgFavs,
-        ...(iMedianAge !== undefined ? { medianAgeDays: iMedianAge } : {}),
-      });
+      const iFavsViewPct = iAvgViews > 0 ? (iAvgFavs / iAvgViews) * 100 : 0;
+      const kd = keywordDifficulty({ competition: ideaCompetition, favsViewPct: iFavsViewPct });
       ideas.push({
         keyword: ideaKw,
         competition: ideaCompetition,
@@ -237,6 +228,9 @@ export function registerKeywordFullRoutes(app: FastifyInstance, etsy: EtsyClient
         competingListings: competition,
         medianPrice: Math.round(medianPrice * 100) / 100,
         avgFavorites: Math.round(avgFavs * 10) / 10,
+        saveRatePct: Math.round(favsViewPct * 100) / 100,
+        insights,
+        note: "KD is an estimate from live listing count + save rate (favs/views).",
       },
       topListings,
       keywordIdeas: ideas,

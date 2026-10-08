@@ -105,15 +105,15 @@ const NAV: { section: string; items: { id: Page; label: string; soon?: boolean }
       { id: "keywords", label: "Keywords" },
       { id: "listings", label: "Listings" },
       { id: "competitors", label: "Competitors" },
+      { id: "trends", label: "Trends" },
       { id: "buzz", label: "Trend Buzz" },
+      { id: "mtrends", label: "Monthly Trends" },
+      { id: "topsellers", label: "Top Sellers" },
       { id: "category", label: "Category Report" },
+      { id: "sales", label: "Competitor Sales" },
       { id: "gap", label: "Keyword Gap" },
       { id: "bulk", label: "Bulk Keywords" },
       { id: "rank", label: "Rank Checker" },
-      { id: "trends", label: "Trends" },
-      { id: "mtrends", label: "Monthly Trends" },
-      { id: "sales", label: "Competitor Sales" },
-      { id: "topsellers", label: "Top Sellers" },
       { id: "alerts", label: "Alerts" },
     ],
   },
@@ -126,8 +126,8 @@ const NAV: { section: string; items: { id: Page; label: string; soon?: boolean }
       { id: "taggen", label: "Tag Generator" },
       { id: "descgen", label: "Description Generator" },
       { id: "listingpro", label: "Etsy Listing Pro" },
-      { id: "aihelper", label: "AI Listing Helper" },
       { id: "automate", label: "Automate Listing", soon: true },
+      { id: "aihelper", label: "AI Listing Helper" },
       { id: "listingaudit", label: "Listing Audit" },
       { id: "competitortags", label: "Competitor Tags" },
       { id: "comparelistings", label: "Compare Listings" },
@@ -221,7 +221,6 @@ export default function App() {
         {page === "topsellers" && <TopSellers />}
         {page === "tagopt" && <TagOptimizer />}
         {page === "hotproducts" && <HotProducts />}
-        {page === "tagopt" && <TagOptimizer />}
         {page === "listingaudit" && <ListingAudit />}
         {page === "competitortags" && <CompetitorTags />}
         {page === "comparelistings" && <CompareListings />}
