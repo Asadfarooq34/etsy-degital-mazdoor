@@ -13,10 +13,13 @@ function clamp(v: number, min: number, max: number): number {
 
 /**
  * Keyword difficulty, 0–100 (lower = easier).
- * v3 — RankKW-aligned methodology (observed via dashboard analysis):
- *   KD = round(0.5 × compScore + 0.5 × engageScore)
- *   compScore    = clamp(competition / 1_000_000 × 100)  → 500k listings = 50
- *   engageScore  = clamp(favsViewPct / 10 × 100)         → 5% save rate = 50
+ * v4 — RankKW-aligned methodology, log-compressed (observed via dashboard analysis):
+ *   KD = clamp(round(42 + compAdjust + engageAdjust), 0, 100)
+ *   compAdjust   = (log10(competition) - 4.5) × 3
+ *   engageAdjust = (favsViewPct - 3) × 1.5
+ * RankKW's scale is logarithmically compressed: competition from ~2K to ~925K
+ * moves their KD only ~43→50. This log form reproduces that behavior —
+ * a 10× competition increase adds ~3 points, not 50.
  * Two real measurements only: (1) true total of competing live listings,
  * (2) how strongly incumbents convert views into favorites (save rate).
  * Weights are our transparent approximation — RankKW's exact weights are proprietary.
@@ -27,18 +30,18 @@ export function keywordDifficulty(args: {
   competition: number;
   /** Average favorites-to-views ratio as a percentage (e.g. 8.3 for 8.3%). */
   favsViewPct: number;
-  /** @deprecated v2 fields kept for backward compat; ignored in v3. */
+  /** @deprecated v2 fields kept for backward compat; ignored in v4. */
   avgViews?: number;
-  /** @deprecated v2 fields kept for backward compat; ignored in v3. */
+  /** @deprecated v2 fields kept for backward compat; ignored in v4. */
   avgFavs?: number;
-  /** @deprecated v2 field kept for backward compat; ignored in v3. */
+  /** @deprecated v2 field kept for backward compat; ignored in v4. */
   medianAgeDays?: number;
 }): number {
-  const compScore = clamp((args.competition / 1_000_000) * 100, 0, 100);
-  const engageScore = clamp((args.favsViewPct / 10) * 100, 0, 100);
   // No competition at all → wide open.
-  if (args.competition === 0) return 0;
-  return Math.round(0.5 * compScore + 0.5 * engageScore);
+  if (args.competition <= 0) return 0;
+  const compAdjust = (Math.log10(args.competition) - 4.5) * 3;
+  const engageAdjust = (args.favsViewPct - 3) * 1.5;
+  return clamp(Math.round(42 + compAdjust + engageAdjust), 0, 100);
 }
 
 /**

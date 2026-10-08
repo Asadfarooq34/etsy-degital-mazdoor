@@ -601,6 +601,11 @@ export const api = {
       "/api/ai/listing",
       { method: "POST", body: JSON.stringify({ product, details }) },
     ),
+  aiKeywordAnalysis: (summary: string) =>
+    req<{ analysis: string; grounded: boolean }>("/api/ai/keyword-analysis", {
+      method: "POST",
+      body: JSON.stringify({ summary }),
+    }),
   seasonalCalendar: (keyword = "") =>
     req<SeasonalCalendarResult>(`/api/tools/seasonal-calendar?keyword=${encodeURIComponent(keyword)}`),
   keywordLists: () => req<{ lists: KeywordList[] }>("/api/tools/keyword-lists"),

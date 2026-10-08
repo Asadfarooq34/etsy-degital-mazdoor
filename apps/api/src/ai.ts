@@ -151,6 +151,27 @@ Return a JSON object (no markdown, no code fences) with exactly these keys:
     return { product, ...listing, grounded: context.length > 0 };
   });
 
+  // POST /api/ai/keyword-analysis { summary }
+  // Interprets measured keyword stats — never invents numbers.
+  app.post("/api/ai/keyword-analysis", async (req) => {
+    needKey();
+    const { summary = "" } = (req.body as { summary?: string }) ?? {};
+    if (!summary.trim()) throw badRequest("summary is required");
+
+    const prompt = `You are an Etsy SEO expert. Below are REAL measured stats for an Etsy keyword (from Etsy's own API — competition count, views, favorites, prices are exact; KD is a labeled estimate).
+
+${summary.trim()}
+
+Write a short, practical analysis (max 150 words, plain text, no markdown headers):
+1. One line: is this keyword worth pursuing, and for whom?
+2. What the numbers say about buyer demand and competition.
+3. One concrete next action.
+Rules: only interpret the numbers given — never invent metrics, volumes, or sales figures. Be direct and honest.`;
+
+    const text = await geminiGenerate(prompt);
+    return { analysis: text.trim(), grounded: true };
+  });
+
   // GET /api/ai/status
   app.get("/api/ai/status", async () => ({ ready: geminiReady() }));
 }

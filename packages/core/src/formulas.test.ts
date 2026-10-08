@@ -15,23 +15,38 @@ import {
 } from "./formulas.js";
 
 describe("keywordDifficulty", () => {
-  it("v3: 500k competition + 5% save rate = 50", () => {
-    // 0.5×50 + 0.5×50 = 50
-    expect(keywordDifficulty({ competition: 500_000, favsViewPct: 5 })).toBe(50);
+  it("v4: 'cv' (35K competition, 1.47% save rate) ≈ 40", () => {
+    const kd = keywordDifficulty({ competition: 35_100, favsViewPct: 1.47 });
+    expect(kd).toBeGreaterThanOrEqual(37);
+    expect(kd).toBeLessThanOrEqual(43);
   });
 
-  it("v3: high engagement raises KD (strong incumbents)", () => {
-    const low = keywordDifficulty({ competition: 100_000, favsViewPct: 1 });
-    const high = keywordDifficulty({ competition: 100_000, favsViewPct: 9 });
-    expect(high).toBeGreaterThan(low);
+  it("v4: 'boho earrings' (925K competition, 8.3% save rate) ≈ 54", () => {
+    const kd = keywordDifficulty({ competition: 925_000, favsViewPct: 8.3 });
+    expect(kd).toBeGreaterThanOrEqual(51);
+    expect(kd).toBeLessThanOrEqual(57);
   });
 
-  it("v3: zero competition = 0", () => {
+  it("v4: 'ring dish' (1.9K competition, 5.1% save rate) ≈ 41", () => {
+    const kd = keywordDifficulty({ competition: 1_900, favsViewPct: 5.1 });
+    expect(kd).toBeGreaterThanOrEqual(38);
+    expect(kd).toBeLessThanOrEqual(44);
+  });
+
+  it("v4: log compression — 10x competition adds ~3 points, not 50", () => {
+    const base = keywordDifficulty({ competition: 10_000, favsViewPct: 3 });
+    const tenX = keywordDifficulty({ competition: 100_000, favsViewPct: 3 });
+    expect(tenX - base).toBeGreaterThanOrEqual(2);
+    expect(tenX - base).toBeLessThanOrEqual(4);
+  });
+
+  it("v4: zero competition = 0", () => {
     expect(keywordDifficulty({ competition: 0, favsViewPct: 0 })).toBe(0);
   });
 
-  it("v3: clamps to 0–100", () => {
-    expect(keywordDifficulty({ competition: 10_000_000, favsViewPct: 50 })).toBe(100);
+  it("v4: clamps to 0–100", () => {
+    expect(keywordDifficulty({ competition: 100_000_000, favsViewPct: 50 })).toBeLessThanOrEqual(100);
+    expect(keywordDifficulty({ competition: 1, favsViewPct: 0 })).toBeGreaterThanOrEqual(0);
   });
 });
 

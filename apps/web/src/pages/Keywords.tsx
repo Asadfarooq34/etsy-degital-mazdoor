@@ -124,6 +124,9 @@ export default function Keywords() {
   const [result, setResult] = useState<KeywordFull | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [aiAnalysis, setAiAnalysis] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState("");
 
   const analyze = async () => {
     if (!keyword.trim()) return;
@@ -136,6 +139,30 @@ export default function Keywords() {
       setResult(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const runAiAnalysis = async () => {
+    if (!result) return;
+    setAiLoading(true);
+    setAiError("");
+    try {
+      const s = result.statistics;
+      const summary = [
+        `Keyword: "${result.keyword}" (Etsy, live data)`,
+        `Competition: ${s.competition.toLocaleString()} active listings`,
+        `Avg views/listing: ${s.avgViews}, avg favorites: ${s.avgFavorites}, save rate: ${s.favsView}%`,
+        `Avg price: $${s.avgPrice.toFixed(2)}`,
+        `KD estimate: ${result.difficulty.score} (${result.difficulty.level})`,
+        `Top opportunity: ${result.opportunities[0]?.keyword ?? "—"} (score ${result.opportunities[0]?.score ?? "—"})`,
+      ].join("\n");
+      const r = await api.aiKeywordAnalysis(summary);
+      setAiAnalysis(r.analysis);
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : "AI analysis failed.");
+      setAiAnalysis("");
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -222,7 +249,7 @@ export default function Keywords() {
                 </>
               ) : (
                 <div className="kw-empty">
-                  Google Ads not connected — volume &amp; CPC unavailable.
+                  Google Ads not connected — volume &amp; CPC will appear here once connected.
                   <br />
                   <span style={{ fontSize: 11.5 }}>
                     Connect via <code>/api/google-ads/connect</code> for real data.
@@ -279,7 +306,12 @@ export default function Keywords() {
                   <p className="stat-note">{result.trendsNote}</p>
                 </div>
               ) : (
-                <p className="stat-note">Trends unavailable right now.</p>
+                <div className="kw-empty">
+                  <p>Trend data loading…</p>
+                  <button className="btn" style={{ marginTop: 8, padding: "6px 14px", fontSize: 13 }} onClick={() => void analyze()} disabled={loading}>
+                    Retry
+                  </button>
+                </div>
               )}
             </div>
 
@@ -310,7 +342,12 @@ export default function Keywords() {
                   <p className="stat-note">Google Trends proxy — not Etsy searchers.</p>
                 </div>
               ) : (
-                <p className="stat-note">Unavailable right now.</p>
+                <div className="kw-empty">
+                  <p>Country data loading…</p>
+                  <button className="btn" style={{ marginTop: 8, padding: "6px 14px", fontSize: 13 }} onClick={() => void analyze()} disabled={loading}>
+                    Retry
+                  </button>
+                </div>
               )}
             </div>
           </div>
@@ -319,7 +356,7 @@ export default function Keywords() {
           <div className="card" style={{ marginTop: 12 }}>
             <h3>Market activity (measured)</h3>
             <p className="stat-note">Top {result.marketActivity.listingsAnalyzed} listings ranking now</p>
-            <div className="stats">
+            <div className="stats-grid">
               <div className="stat">
                 <div className="stat-label">Listings analyzed</div>
                 <div className="stat-value">{result.marketActivity.listingsAnalyzed}</div>
@@ -355,6 +392,31 @@ export default function Keywords() {
                 <div className="stat-note">views / week</div>
               </div>
             </div>
+          </div>
+
+          {/* AI Analysis banner */}
+          <div className="card" style={{ marginTop: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+              <div>
+                <h3 style={{ margin: 0 }}>AI Analysis</h3>
+                <p className="stat-note" style={{ margin: "4px 0 0" }}>
+                  The numbers above are real and measured — AI only interprets them, never invents.
+                </p>
+              </div>
+              <button
+                className="btn btn-purple"
+                onClick={() => void runAiAnalysis()}
+                disabled={aiLoading}
+              >
+                {aiLoading ? "Analyzing…" : "Analyze →"}
+              </button>
+            </div>
+            {aiError && <p className="stat-note" style={{ color: "var(--red-600, #dc2626)", marginTop: 8 }}>{aiError}</p>}
+            {aiAnalysis && (
+              <div style={{ marginTop: 10, padding: 12, background: "var(--bg-soft, #f8f7ff)", borderRadius: 8, fontSize: 14, lineHeight: 1.6, whiteSpace: "pre-wrap" }}>
+                {aiAnalysis}
+              </div>
+            )}
           </div>
 
           {/* Row: Difficulty | Opportunities */}

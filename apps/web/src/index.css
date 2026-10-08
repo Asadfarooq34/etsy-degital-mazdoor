@@ -215,6 +215,20 @@ body {
   margin-top: 4px;
 }
 
+/* Horizontal stat grid for market activity — compact boxes, responsive. */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+.stats-grid .stat {
+  padding: 12px;
+}
+.stats-grid .stat-value {
+  font-size: 20px;
+}
+
 /* ---------- Keywords premium layout ---------- */
 .kw-sec-label {
   display: flex;
