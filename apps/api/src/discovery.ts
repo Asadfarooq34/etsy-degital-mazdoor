@@ -3,6 +3,7 @@
  * Both are fully computable from the Etsy API v3.
  */
 import type { FastifyInstance } from "fastify";
+import { estimateSalesPerMonth, shopPerListingPerMonth } from "@digital-mazdoor/core";
 import type { EtsyClient } from "./etsy.js";
 
 function badRequest(msg: string): Error {
@@ -164,12 +165,32 @@ export function registerDiscoveryRoutes(app: FastifyInstance, etsy: EtsyClient):
 
     const maxFpd = Math.max(0.001, ...rows.map((r) => r.favsPerDay));
     const maxFpv = Math.max(0.0001, ...rows.map((r) => r.favsPerView));
+
+    // Shop calibration for the sales estimate: fetch each unique shop once and
+    // spread its lifetime sales across its active listings and shop age.
+    // Missing/failed shops simply fall back to the favorites-velocity estimate.
+    const shopRate = new Map<number, number>();
+    if (live) {
+      const shopIds = [...new Set(rows.map((r) => r.l.shopId).filter((id) => id > 0))];
+      for (const shopId of shopIds) {
+        try {
+          const s = await etsy.getShop(shopId);
+          const ageMonths = Math.max(1, (Date.now() / 1000 - s.creationTimestamp) / 2_592_000);
+          const rate = shopPerListingPerMonth(s.transactionSoldCount, s.listingActiveCount, ageMonths);
+          if (rate !== undefined) shopRate.set(shopId, rate);
+        } catch {
+          // fall back to favorites-only for this shop
+        }
+      }
+    }
+
     const products = rows
       .map((r) => {
         const hotScore = Math.round(
           ((r.favsPerDay / maxFpd) * 0.7 + (r.favsPerView / maxFpv) * 0.3) * 100,
         );
-        const salesPerMonth = Math.round(r.favsPerDay * 30 * 0.1 * 10) / 10;
+        // 50/50 blend of favorites velocity and shop-calibrated rate (labeled estimate).
+        const salesPerMonth = estimateSalesPerMonth(r.favsPerDay * 30 * 0.1, shopRate.get(r.l.shopId));
         return {
           listingId: r.l.listingId,
           title: r.l.title,
@@ -192,7 +213,7 @@ export function registerDiscoveryRoutes(app: FastifyInstance, etsy: EtsyClient):
       mode: etsy.effectiveMode,
       degraded: etsy.degraded,
       note: live
-        ? "Hot Score from real favorites velocity + engagement. ~Sales/mo is a labeled estimate — Etsy publishes no per-listing sales."
+        ? "Hot Score from real favorites velocity + engagement. ~Sales/mo blends favorites velocity with each shop's lifetime per-listing rate — a labeled estimate, since Etsy publishes no per-listing sales."
         : "Fixture data — connect your Etsy key for live hot products.",
       count: products.length,
       products,

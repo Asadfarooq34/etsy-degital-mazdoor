@@ -7,6 +7,7 @@
  */
 import type { FastifyInstance } from "fastify";
 import {
+  DEFAULT_FAVS_VIEW_RATIO,
   estimateViews,
   keywordDifficulty,
   opportunityScore,
@@ -14,7 +15,6 @@ import {
 } from "@digital-mazdoor/core";
 import type { EtsyClient } from "./etsy.js";
 
-const FAVS_VIEW_RATIO = 0.016;
 const MAX_BULK = 25;
 const MAX_RANK_KEYWORDS = 10;
 
@@ -47,7 +47,7 @@ export function registerBulkRankRoutes(app: FastifyInstance, etsy: EtsyClient): 
       const avgViews: number | Estimated =
         measuredViews.length > 0
           ? measuredViews.reduce((s, v) => s + v, 0) / measuredViews.length
-          : estimateViews(Math.round(avgFavs), FAVS_VIEW_RATIO);
+          : estimateViews(Math.round(avgFavs), DEFAULT_FAVS_VIEW_RATIO);
       const difficulty = keywordDifficulty({
         competition,
         avgViews: typeof avgViews === "number" ? avgViews : avgViews.value,

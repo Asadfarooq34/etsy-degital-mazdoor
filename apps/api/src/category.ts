@@ -4,10 +4,8 @@
  * price histogram (outliers trimmed) · defining tags · top listings.
  */
 import type { FastifyInstance } from "fastify";
-import { estimateViews, type Estimated } from "@digital-mazdoor/core";
+import { estimateViews, viewsRatioForCategory, type Estimated } from "@digital-mazdoor/core";
 import type { EtsyClient } from "./etsy.js";
-
-const FAVS_VIEW_RATIO = 0.016;
 
 function median(values: number[]): number {
   if (values.length === 0) return 0;
@@ -43,7 +41,7 @@ export function registerCategoryRoutes(app: FastifyInstance, etsy: EtsyClient): 
     const viewsNums = listings.map((l) =>
       typeof (l.views ?? null) === "number"
         ? (l.views as number)
-        : estimateViews(l.numFavorers, FAVS_VIEW_RATIO).value,
+        : estimateViews(l.numFavorers, viewsRatioForCategory(l.taxonomyId, l.tags)).value,
     );
 
     // Price histogram — trim outliers (5th–95th percentile), 10 buckets.
@@ -89,7 +87,7 @@ export function registerCategoryRoutes(app: FastifyInstance, etsy: EtsyClient): 
 
     // Top listings by views.
     const withViews = listings.map((l) => {
-      const views: number | Estimated = l.views ?? estimateViews(l.numFavorers, FAVS_VIEW_RATIO);
+      const views: number | Estimated = l.views ?? estimateViews(l.numFavorers, viewsRatioForCategory(l.taxonomyId, l.tags));
       return { l, viewsNum: typeof views === "number" ? views : views.value };
     });
     const topListings = withViews
