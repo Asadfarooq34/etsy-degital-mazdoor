@@ -16,13 +16,13 @@ import {
   estimateViews,
   keywordDifficulty,
   opportunityScore,
+  viewsRatioForCategory,
   type Estimated,
 } from "@digital-mazdoor/core";
 import type { EtsyClient } from "./etsy.js";
 import { getDb } from "./db.js";
 import { googleInterest, peakMonth, trendDirection } from "./trends.js";
 
-const FAVS_VIEW_RATIO = 0.016;
 const DAY_SECONDS = 86_400;
 const MAX_IDEAS = 12;
 
@@ -71,7 +71,7 @@ export function registerKeywordFullRoutes(app: FastifyInstance, etsy: EtsyClient
     const trends = await trendsPromise;
     const competition = live ? count : 45_300;
 
-    const viewsList = listings.map((l) => viewsNum(l.views ?? estimateViews(l.numFavorers, FAVS_VIEW_RATIO)));
+    const viewsList = listings.map((l) => viewsNum(l.views ?? estimateViews(l.numFavorers, viewsRatioForCategory(l.taxonomyId, l.tags))));
     const favsList = listings.map((l) => l.numFavorers);
     const priceList = listings.map((l) => l.price.amount);
     const ages = listings.map((l) => ageDays(l.originalCreationTimestamp));
@@ -84,7 +84,12 @@ export function registerKeywordFullRoutes(app: FastifyInstance, etsy: EtsyClient
     const avgDailyViews = avg(listings.map((l, i) => viewsList[i]! / ages[i]!));
     const top10Ages = ages.slice(0, 10).sort((a, b) => a - b);
     const medianAgeDays = top10Ages.length ? top10Ages[Math.floor(top10Ages.length / 2)]! : undefined;
-    const difficulty = keywordDifficulty({ competition, avgViews, avgFavs, medianAgeDays });
+    const difficulty = keywordDifficulty({
+      competition,
+      avgViews,
+      avgFavs,
+      ...(medianAgeDays !== undefined ? { medianAgeDays } : {}),
+    });
 
     // 2. Keyword ideas from tags (top tags by frequency → each is a keyword idea).
     const tagFreq = new Map<string, number>();
@@ -104,7 +109,7 @@ export function registerKeywordFullRoutes(app: FastifyInstance, etsy: EtsyClient
       const withTag = listings.filter((l) =>
         l.tags.map((t) => t.toLowerCase()).includes(ideaKw),
       );
-      const iViews = withTag.map((l) => viewsNum(l.views ?? estimateViews(l.numFavorers, FAVS_VIEW_RATIO)));
+      const iViews = withTag.map((l) => viewsNum(l.views ?? estimateViews(l.numFavorers, viewsRatioForCategory(l.taxonomyId, l.tags))));
       const iFavs = withTag.map((l) => l.numFavorers);
       const iAvgViews = avg(iViews);
       const iAvgFavs = avg(iFavs);
@@ -123,7 +128,7 @@ export function registerKeywordFullRoutes(app: FastifyInstance, etsy: EtsyClient
         competition: ideaCompetition,
         avgViews: iAvgViews,
         avgFavs: iAvgFavs,
-        medianAgeDays: iMedianAge,
+        ...(iMedianAge !== undefined ? { medianAgeDays: iMedianAge } : {}),
       });
       ideas.push({
         keyword: ideaKw,

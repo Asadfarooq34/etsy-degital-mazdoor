@@ -10,7 +10,7 @@ import Fastify from "fastify";
 // so a bare `import "dotenv/config"` would miss apps/api/.env).
 const here = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: [path.join(here, "..", ".env"), path.join(here, "..", "..", "..", ".env")] });
-import { calculateFees, estimateViews, keywordDifficulty, opportunityScore } from "@digital-mazdoor/core";
+import { calculateFees, DEFAULT_FAVS_VIEW_RATIO, estimateViews, keywordDifficulty, opportunityScore } from "@digital-mazdoor/core";
 import { closeDb, getDb } from "./db.js";
 import { EtsyClient } from "./etsy.js";
 import { registerResearchRoutes } from "./research.js";
@@ -99,7 +99,7 @@ export function buildServer(): ReturnType<typeof Fastify> {
     const avgViews =
       measuredViews.length > 0
         ? measuredViews.reduce((s, v) => s + v, 0) / measuredViews.length
-        : estimateViews(Math.round(avgFavs), 0.016); // category benchmark ratio, "est."
+        : estimateViews(Math.round(avgFavs), DEFAULT_FAVS_VIEW_RATIO); // "est."
     const difficulty = keywordDifficulty({
       competition,
       avgViews: typeof avgViews === "number" ? avgViews : avgViews.value,

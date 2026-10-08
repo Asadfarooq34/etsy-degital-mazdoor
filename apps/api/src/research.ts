@@ -5,8 +5,10 @@
  */
 import type { FastifyInstance } from "fastify";
 import {
+  DEFAULT_FAVS_VIEW_RATIO,
   estimateViews,
   heatIndex,
+  viewsRatioForCategory,
   type BuzzInput,
   type Estimated,
   type Listing,
@@ -15,8 +17,6 @@ import { FIXTURE_BUZZ_TAGS, fixtureShopName } from "./fixtures.js";
 import type { EtsyClient } from "./etsy.js";
 
 const DAY_SECONDS = 86_400;
-/** Category benchmark favs/view ratio used for labeled estimates. */
-const FAVS_VIEW_RATIO = 0.016;
 
 function badRequest(message: string): Error {
   return Object.assign(new Error(message), { statusCode: 400 });
@@ -40,9 +40,9 @@ function avg(values: number[]): number {
 /** Listing as returned by EtsyClient.searchListings (may carry the fixture flag). */
 type SearchedListing = Listing & { fixture?: true };
 
-/** Views: measured when Etsy exposes them, otherwise a LABELED estimate. */
+/** Views: measured when Etsy exposes them, otherwise a LABELED category-aware estimate. */
 function listingViews(l: SearchedListing): number | Estimated {
-  return l.views ?? estimateViews(l.numFavorers, FAVS_VIEW_RATIO);
+  return l.views ?? estimateViews(l.numFavorers, viewsRatioForCategory(l.taxonomyId, l.tags));
 }
 
 function viewsNum(v: number | Estimated): number {
@@ -85,7 +85,7 @@ function aggregateTags(listings: SearchedListing[], scopeLower: string): BuzzInp
       tagFrequency: e.count,
       avgEngagement: avgFavs,
       listings: e.count,
-      avgViews: estimateViews(Math.round(avgFavs), FAVS_VIEW_RATIO),
+      avgViews: estimateViews(Math.round(avgFavs), DEFAULT_FAVS_VIEW_RATIO),
       avgFavs: Math.round(avgFavs * 10) / 10,
       listingsPerMonth: e.months,
       medianAgeDays: Math.round(median(e.ages)),
@@ -178,7 +178,7 @@ export function registerResearchRoutes(app: FastifyInstance, etsy: EtsyClient): 
         tagFrequency: t.frequency,
         avgEngagement: t.avgEngagement,
         listings: t.listings,
-        avgViews: estimateViews(t.avgFavs, FAVS_VIEW_RATIO),
+        avgViews: estimateViews(t.avgFavs, DEFAULT_FAVS_VIEW_RATIO),
         avgFavs: t.avgFavs,
         listingsPerMonth: t.listingsPerMonth,
         medianAgeDays: t.medianAgeDays,
