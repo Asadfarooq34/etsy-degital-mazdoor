@@ -13,33 +13,52 @@ function clamp(v: number, min: number, max: number): number {
 
 /**
  * Keyword difficulty, 0–100 (lower = easier).
- * v2 transparent formula (Asad's age insight):
- *   KD = round(0.35 × compScore + 0.25 × viewsScore + 0.15 × favsScore + 0.25 × ageScore)
- *   compScore  = clamp(competition / 100_000 × 100)      → 50k listings = 50
- *   viewsScore = clamp(avgViews / 20_000 × 100)          → strong incumbents raise KD
- *   favsScore  = clamp(avgFavs / 500 × 100)
- *   ageScore   = median age of top-10 listings mapped to 0–100:
- *                ≤90 days  → 10 (young winners = easy to displace)
- *                365 days  → 50
- *                ≥730 days → 90 (entrenched 2-year incumbents = hard)
+ * v3 — RankKW-aligned methodology (observed via dashboard analysis):
+ *   KD = round(0.5 × compScore + 0.5 × engageScore)
+ *   compScore    = clamp(competition / 1_000_000 × 100)  → 500k listings = 50
+ *   engageScore  = clamp(favsViewPct / 10 × 100)         → 5% save rate = 50
+ * Two real measurements only: (1) true total of competing live listings,
+ * (2) how strongly incumbents convert views into favorites (save rate).
+ * Weights are our transparent approximation — RankKW's exact weights are proprietary.
+ * Labeled as estimate everywhere it appears.
  * Teacher's rule: KD < 50 passes.
  */
 export function keywordDifficulty(args: {
   competition: number;
-  avgViews: number;
-  avgFavs: number;
-  /** Median age in days of the top-10 ranking listings. Omit if unknown. */
+  /** Average favorites-to-views ratio as a percentage (e.g. 8.3 for 8.3%). */
+  favsViewPct: number;
+  /** @deprecated v2 fields kept for backward compat; ignored in v3. */
+  avgViews?: number;
+  /** @deprecated v2 fields kept for backward compat; ignored in v3. */
+  avgFavs?: number;
+  /** @deprecated v2 field kept for backward compat; ignored in v3. */
   medianAgeDays?: number;
 }): number {
-  const compScore = clamp((args.competition / 100_000) * 100, 0, 100);
-  const viewsScore = clamp((args.avgViews / 20_000) * 100, 0, 100);
-  const favsScore = clamp((args.avgFavs / 500) * 100, 0, 100);
-  // No competition at all → wide open, KD 0 regardless of age default.
-  if (compScore === 0 && viewsScore === 0 && favsScore === 0) return 0;
-  // Age curve: young top-10 = crackable, old top-10 = entrenched.
-  const age = args.medianAgeDays ?? 365;
-  const ageScore = age <= 90 ? 10 : age >= 730 ? 90 : 10 + ((age - 90) / (730 - 90)) * 80;
-  return Math.round(0.35 * compScore + 0.25 * viewsScore + 0.15 * favsScore + 0.25 * ageScore);
+  const compScore = clamp((args.competition / 1_000_000) * 100, 0, 100);
+  const engageScore = clamp((args.favsViewPct / 10) * 100, 0, 100);
+  // No competition at all → wide open.
+  if (args.competition === 0) return 0;
+  return Math.round(0.5 * compScore + 0.5 * engageScore);
+}
+
+/**
+ * Insight labels for a keyword, mirroring the honest signals RankKW surfaces:
+ * buyer interest (from save rate) and saturation (from competition).
+ * Our own wording; thresholds calibrated from observed Etsy data.
+ */
+export function keywordInsights(args: {
+  favsViewPct: number;
+  competition: number;
+}): string[] {
+  const out: string[] = [];
+  // ~1–3% save rate is typical; 5%+ signals strong buyer interest.
+  if (args.favsViewPct >= 5) out.push("High buyer interest");
+  else if (args.favsViewPct >= 3) out.push("Good buyer interest");
+  // Saturation bands from live listing counts.
+  if (args.competition >= 500_000) out.push("Saturated");
+  else if (args.competition >= 100_000) out.push("Competitive");
+  else if (args.competition > 0 && args.competition < 10_000) out.push("Low competition");
+  return out;
 }
 
 /**

@@ -52,7 +52,7 @@ export default function ListingAudit() {
             {loading ? "Auditing…" : "Audit →"}
           </button>
         </div>
-        <p className="stat-note">Paste the numeric listing ID from the Etsy URL.</p>
+        <p className="stat-note">Paste the listing ID or the full Etsy listing URL.</p>
       </div>
 
       {error && <div className="error">{error}</div>}

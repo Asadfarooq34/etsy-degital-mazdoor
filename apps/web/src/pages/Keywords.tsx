@@ -348,8 +348,26 @@ export default function Keywords() {
                     <span>Avg. favorites</span>
                     <strong>{fmt(d.avgFavorites)}</strong>
                   </div>
+                  <div className="stat-note" style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span title="Favorites ÷ views. Etsy shares no click data, so this save rate stands in for engagement — ~1–3% is typical.">
+                      Save rate (favs/view)
+                    </span>
+                    <strong>{d.saveRatePct}%</strong>
+                  </div>
+                  {d.insights.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                      {d.insights.map((ins) => (
+                        <span
+                          key={ins}
+                          className={`badge ${ins.includes("Saturated") || ins.includes("Competitive") ? "badge-fail" : "badge-pass"}`}
+                        >
+                          {ins}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                   <p className="stat-note" style={{ marginTop: 8 }}>
-                    Our labeled estimate from real inputs — not an official metric.
+                    {d.note} Two real inputs: live listing count + save rate.
                   </p>
                 </div>
               )}

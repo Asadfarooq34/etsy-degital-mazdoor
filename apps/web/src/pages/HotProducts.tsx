@@ -100,7 +100,7 @@ export default function HotProducts() {
                     padding: "10px 12px",
                     border: "1px solid var(--border)",
                     borderRadius: "var(--radius)",
-                    background: released === r.id ? "var(--purple-600)" : "#fff",
+                    background: released === r.id ? "#dc2626" : "#fff",
                     color: released === r.id ? "#fff" : "var(--ink-900)",
                     fontFamily: "var(--font)",
                     fontSize: 13,

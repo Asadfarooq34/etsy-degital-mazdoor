@@ -7,6 +7,7 @@ import {
   favsViewRatio,
   heatIndex,
   keywordDifficulty,
+  keywordInsights,
   opportunityScore,
   salesVelocity,
   shopPerListingPerMonth,
@@ -14,45 +15,45 @@ import {
 } from "./formulas.js";
 
 describe("keywordDifficulty", () => {
-  it("scores 50k competition / 20k views / 500 favs / 1yr median age as 69", () => {
-    // 0.35×50 + 0.25×100 + 0.15×100 + 0.25×44.375 = 68.59 → 69
-    expect(
-      keywordDifficulty({ competition: 50_000, avgViews: 20_000, avgFavs: 500, medianAgeDays: 365 }),
-    ).toBe(69);
+  it("v3: 500k competition + 5% save rate = 50", () => {
+    // 0.5×50 + 0.5×50 = 50
+    expect(keywordDifficulty({ competition: 500_000, favsViewPct: 5 })).toBe(50);
   });
 
-  it("rewards young top-10 (Asad's age insight)", () => {
-    const young = keywordDifficulty({
-      competition: 50_000,
-      avgViews: 20_000,
-      avgFavs: 500,
-      medianAgeDays: 60,
-    });
-    const old = keywordDifficulty({
-      competition: 50_000,
-      avgViews: 20_000,
-      avgFavs: 500,
-      medianAgeDays: 800,
-    });
-    expect(young).toBeLessThan(old);
+  it("v3: high engagement raises KD (strong incumbents)", () => {
+    const low = keywordDifficulty({ competition: 100_000, favsViewPct: 1 });
+    const high = keywordDifficulty({ competition: 100_000, favsViewPct: 9 });
+    expect(high).toBeGreaterThan(low);
   });
 
-  it("clamps to 0–100", () => {
-    // Max realistic: 0.35×100 + 0.25×100 + 0.15×100 + 0.25×90 = 97.5 → 98
-    expect(
-      keywordDifficulty({
-        competition: 10_000_000,
-        avgViews: 1e9,
-        avgFavs: 1e6,
-        medianAgeDays: 800,
-      }),
-    ).toBe(98);
-    expect(keywordDifficulty({ competition: 0, avgViews: 0, avgFavs: 0 })).toBe(0);
+  it("v3: zero competition = 0", () => {
+    expect(keywordDifficulty({ competition: 0, favsViewPct: 0 })).toBe(0);
+  });
+
+  it("v3: clamps to 0–100", () => {
+    expect(keywordDifficulty({ competition: 10_000_000, favsViewPct: 50 })).toBe(100);
+  });
+});
+
+describe("keywordInsights", () => {
+  it("flags high buyer interest and saturation", () => {
+    expect(keywordInsights({ favsViewPct: 8.3, competition: 925_315 })).toEqual([
+      "High buyer interest",
+      "Saturated",
+    ]);
+  });
+
+  it("flags low competition niches", () => {
+    expect(keywordInsights({ favsViewPct: 1.5, competition: 5_000 })).toEqual(["Low competition"]);
+  });
+
+  it("returns empty for average keywords", () => {
+    expect(keywordInsights({ favsViewPct: 2, competition: 50_000 })).toEqual([]);
   });
 
   it("an easy teacher-style keyword scores under 50", () => {
     // competition 10k, modest incumbents
-    expect(keywordDifficulty({ competition: 10_000, avgViews: 2_000, avgFavs: 20 })).toBeLessThan(50);
+    expect(keywordDifficulty({ competition: 10_000, favsViewPct: 2 })).toBeLessThan(50);
   });
 });
 

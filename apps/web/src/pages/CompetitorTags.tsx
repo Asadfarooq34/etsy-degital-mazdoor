@@ -74,7 +74,7 @@ export default function CompetitorTags() {
               onKeyDown={(e) => e.key === "Enter" && void analyze()}
             />
           </div>
-          <button className="btn btn-green" onClick={() => void analyze()} disabled={loading}>
+          <button className="btn btn-purple" onClick={() => void analyze()} disabled={loading}>
             {loading ? "Analyzing…" : "Analyze →"}
           </button>
         </div>

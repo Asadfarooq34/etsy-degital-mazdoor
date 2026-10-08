@@ -5,7 +5,7 @@ const TRUST_PILLS = [
   "Only creates drafts you ask for",
   "Official Etsy OAuth",
   "Revoke anytime",
-  "Multiple shops supported",
+  "Planned: multiple shops",
 ];
 
 export default function MyShop() {

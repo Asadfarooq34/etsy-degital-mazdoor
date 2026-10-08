@@ -78,7 +78,7 @@ export default function Listings() {
       <h1 className="page-title">Listings</h1>
       <p className="page-sub">
         Browse live listings for a keyword — age, views, views/day, favorites. Views/day =
-        views ÷ age.
+        views ÷ age. Thumbnails aren't available — Etsy's search API doesn't return image URLs.
       </p>
 
       <div className="card">
@@ -128,7 +128,7 @@ export default function Listings() {
               <option value="views">Views</option>
             </select>
           </div>
-          <button className="btn" onClick={() => void search()} disabled={loading}>
+          <button className="btn btn-blue" onClick={() => void search()} disabled={loading}>
             {loading ? "Searching…" : "Apply"}
           </button>
         </div>
