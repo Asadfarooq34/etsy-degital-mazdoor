@@ -194,44 +194,71 @@ export default function Keywords() {
           >
             <div className="card">
               <h3>Keyword statistics</h3>
-              <div className="stat-note" style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
-                <span>Avg. views</span>
-                <strong>{fmt(result.statistics.avgViews)}</strong>
-              </div>
-              <div className="stat-note" style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
-                <span>Avg. favorites</span>
-                <strong>{fmt(result.statistics.avgFavorites)}</strong>
-              </div>
-              <div className="stat-note" style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
-                <span>Favs / view</span>
-                <strong>{result.statistics.favsView}%</strong>
-              </div>
-              <div className="stat-note" style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
-                <span>Avg. price</span>
-                <strong>${result.statistics.avgPrice.toFixed(2)}</strong>
-              </div>
-              <div className="stat-note" style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
-                <span>Competition</span>
-                <strong>{fmt(result.statistics.competition)}</strong>
+              <div className="kw-sec-label">
+                <span className="kw-sec-dot" style={{ background: "#16a34a" }} />
+                Google
               </div>
               {result.googleAds?.found ? (
                 <>
-                  <div className="stat-note" style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
-                    <span title="Real data from Google Ads API">Google volume <span className="badge badge-pass">LIVE</span></span>
-                    <strong>{result.googleAds.avgMonthlySearches?.toLocaleString() ?? "—"}/mo</strong>
+                  <div className="kw-row">
+                    <span className="kw-label">Search volume</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span className="badge badge-live">LIVE</span>
+                      <span className="kw-pill kw-pill-green">
+                        {result.googleAds.avgMonthlySearches?.toLocaleString() ?? "—"}
+                      </span>
+                    </span>
                   </div>
-                  <div className="stat-note" style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
-                    <span>CPC range</span>
-                    <strong>${result.googleAds.cpcLow ?? "—"} – ${result.googleAds.cpcHigh ?? "—"}</strong>
+                  <div className="kw-row">
+                    <span className="kw-label">Ad competition</span>
+                    <span className="kw-pill kw-pill-blue">{result.googleAds.adCompetition}</span>
                   </div>
-                  <div className="stat-note" style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
-                    <span>Ad competition</span>
-                    <strong>{result.googleAds.adCompetition}</strong>
+                  <div className="kw-row">
+                    <span className="kw-label">CPC range</span>
+                    <span className="kw-pill kw-pill-grey">
+                      ${result.googleAds.cpcLow ?? "—"} – ${result.googleAds.cpcHigh ?? "—"}
+                    </span>
                   </div>
                 </>
               ) : (
-                <p className="stat-note" style={{ marginTop: 8 }}>{result.googleNote}</p>
+                <div className="kw-empty">
+                  Google Ads not connected — volume &amp; CPC unavailable.
+                  <br />
+                  <span style={{ fontSize: 11.5 }}>
+                    Connect via <code>/api/google-ads/connect</code> for real data.
+                  </span>
+                </div>
               )}
+              <div className="kw-sec-label">
+                <span className="kw-sec-dot" style={{ background: "#7c3aed" }} />
+                Etsy
+              </div>
+              <div className="kw-row">
+                <span className="kw-label">Avg. views</span>
+                <span className="kw-pill kw-pill-blue">{fmt(result.statistics.avgViews)}</span>
+              </div>
+              <div className="kw-row">
+                <span className="kw-label">Avg. favorites</span>
+                <span className="kw-pill kw-pill-blue">{fmt(result.statistics.avgFavorites)}</span>
+              </div>
+              <div className="kw-row">
+                <span className="kw-label">Favs / view</span>
+                <span
+                  className={`kw-pill ${result.statistics.favsView >= 5 ? "kw-pill-green" : "kw-pill-blue"}`}
+                >
+                  {result.statistics.favsView}%
+                </span>
+              </div>
+              <div className="kw-row">
+                <span className="kw-label">Avg. price</span>
+                <span className="kw-pill kw-pill-grey">
+                  ${result.statistics.avgPrice.toFixed(2)}
+                </span>
+              </div>
+              <div className="kw-row">
+                <span className="kw-label">Competition</span>
+                <span className="kw-pill kw-pill-red">{fmt(result.statistics.competition)}</span>
+              </div>
             </div>
 
             <div className="card">
@@ -336,44 +363,34 @@ export default function Keywords() {
               <h3>Keyword difficulty</h3>
               {d && (
                 <div>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-                    <span style={{ fontSize: 40, fontWeight: 800, color: "var(--purple-700)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <span style={{ fontSize: 52, fontWeight: 800, color: "var(--purple-700)", lineHeight: 1 }}>
                       {d.score}
                     </span>
-                    <span className={`badge ${d.level === "EASY" ? "badge-pass" : d.level === "MEDIUM" ? "badge-est" : "badge-fail"}`}>
+                    <span
+                      className={`badge ${d.level === "EASY" ? "badge-pass" : d.level === "MEDIUM" ? "badge-est" : "badge-fail"}`}
+                      style={{ fontSize: 12, padding: "5px 12px" }}
+                    >
                       {d.level}
                     </span>
                   </div>
-                  <div style={{ height: 8, background: "var(--border)", borderRadius: 4, margin: "8px 0 12px" }}>
+                  <div style={{ height: 10, background: "var(--border)", borderRadius: 5, margin: "12px 0 6px" }}>
                     <div
                       style={{
                         width: `${Math.min(100, d.score)}%`,
                         height: "100%",
-                        background: "var(--purple-600)",
-                        borderRadius: 4,
+                        background:
+                          d.level === "EASY"
+                            ? "#16a34a"
+                            : d.level === "MEDIUM"
+                              ? "#d97706"
+                              : "#dc2626",
+                        borderRadius: 5,
                       }}
                     />
                   </div>
-                  <div className="stat-note" style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Competing listings</span>
-                    <strong>{fmt(d.competingListings)}</strong>
-                  </div>
-                  <div className="stat-note" style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Median price</span>
-                    <strong>${d.medianPrice.toFixed(2)}</strong>
-                  </div>
-                  <div className="stat-note" style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>Avg. favorites</span>
-                    <strong>{fmt(d.avgFavorites)}</strong>
-                  </div>
-                  <div className="stat-note" style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span title="Favorites ÷ views. Etsy shares no click data, so this save rate stands in for engagement — ~1–3% is typical.">
-                      Save rate (favs/view)
-                    </span>
-                    <strong>{d.saveRatePct}%</strong>
-                  </div>
                   {d.insights.length > 0 && (
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, margin: "10px 0 4px" }}>
                       {d.insights.map((ins) => (
                         <span
                           key={ins}
@@ -384,7 +401,25 @@ export default function Keywords() {
                       ))}
                     </div>
                   )}
-                  <p className="stat-note" style={{ marginTop: 8 }}>
+                  <div className="kw-row" style={{ marginTop: 6 }}>
+                    <span className="kw-label">Competing listings</span>
+                    <span className="kw-pill kw-pill-red">{fmt(d.competingListings)}</span>
+                  </div>
+                  <div className="kw-row">
+                    <span className="kw-label">Save rate (favs/view)</span>
+                    <span className={`kw-pill ${d.saveRatePct >= 5 ? "kw-pill-green" : "kw-pill-blue"}`}>
+                      {d.saveRatePct}%
+                    </span>
+                  </div>
+                  <div className="kw-row">
+                    <span className="kw-label">Median price</span>
+                    <span className="kw-pill kw-pill-grey">${d.medianPrice.toFixed(2)}</span>
+                  </div>
+                  <div className="kw-row">
+                    <span className="kw-label">Avg. favorites</span>
+                    <span className="kw-pill kw-pill-blue">{fmt(d.avgFavorites)}</span>
+                  </div>
+                  <p className="stat-note" style={{ marginTop: 10 }}>
                     {d.note} Two real inputs: live listing count + save rate.
                   </p>
                 </div>
@@ -431,22 +466,45 @@ export default function Keywords() {
               }}
             >
               {result.topListings.map((l) => (
-                <div key={l.listingId} className="card" style={{ margin: 0 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                <div
+                  key={l.listingId}
+                  className="card"
+                  style={{ margin: 0, padding: 14, display: "flex", flexDirection: "column", gap: 6 }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <span className="badge badge-est">#{l.rank}</span>
-                    <strong>${l.price.amount.toFixed(2)}</strong>
+                    <strong style={{ fontSize: 15 }}>${l.price.amount.toFixed(2)}</strong>
                   </div>
-                  <div style={{ fontWeight: 600, marginBottom: 4 }}>{l.title}</div>
-                  <div className="stat-note">Shop #{l.shopId}</div>
-                  <div className="stat-note" style={{ display: "flex", justifyContent: "space-between", marginTop: 6 }}>
-                    <span>Age {l.ageDays}d</span>
-                    <span>{fmt(l.views)} views</span>
+                  <div
+                    style={{
+                      fontWeight: 600,
+                      fontSize: 13.5,
+                      lineHeight: 1.35,
+                      display: "-webkit-box",
+                      WebkitLineClamp: 3,
+                      WebkitBoxOrient: "vertical",
+                      overflow: "hidden",
+                      minHeight: 55,
+                    }}
+                  >
+                    {l.title}
                   </div>
-                  <div className="stat-note" style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>{l.viewsPerDay}/day</span>
+                  <div className="stat-note" style={{ marginTop: 0 }}>Shop #{l.shopId}</div>
+                  <div
+                    className="stat-note"
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      borderTop: "1px solid var(--border)",
+                      paddingTop: 8,
+                      marginTop: "auto",
+                    }}
+                  >
+                    <span>{fmt(l.views)} views · {l.viewsPerDay}/day</span>
                     <span>{l.favsView}% favs/view</span>
                   </div>
-                  <a href={l.url} target="_blank" rel="noreferrer" style={{ color: "var(--purple-700)", fontSize: 13 }}>
+                  <div className="stat-note" style={{ marginTop: 0 }}>Age {l.ageDays}d</div>
+                  <a href={l.url} target="_blank" rel="noreferrer" style={{ color: "var(--purple-700)", fontSize: 13, fontWeight: 600 }}>
                     See on Etsy ↗
                   </a>
                 </div>

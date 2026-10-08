@@ -102,8 +102,8 @@ export function registerKeywordFullRoutes(app: FastifyInstance, etsy: EtsyClient
 
     const avgViews = avg(viewsList);
     const avgFavs = avg(favsList);
-    const avgPrice = avg(priceList);
-    const medianPrice = median(priceList);
+    const avgPrice = median(priceList); // median, not mean — one luxury listing must not skew it
+    const medianPrice = avgPrice;
     const totalViews = viewsList.reduce((s, v) => s + v, 0);
     const avgDailyViews = avg(listings.map((l, i) => viewsList[i]! / ages[i]!));
     // v3 KD: competition + save rate (favs/view %) — RankKW-aligned methodology.
