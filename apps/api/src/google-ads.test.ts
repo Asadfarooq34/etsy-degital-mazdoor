@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 import {
   adCompetitionLabel,
   buildAuthUrl,
+  computeCountryShares,
   loadConfig,
+  parseHistoricalMetrics,
   parseIdeaResult,
 } from "./google-ads.js";
 
@@ -67,5 +69,83 @@ describe("adCompetitionLabel", () => {
 describe("loadConfig", () => {
   it("returns null when env vars are missing", () => {
     expect(loadConfig()).toBeNull();
+  });
+});
+
+describe("computeCountryShares", () => {
+  it("computes percentages that sum to ~100, sorted desc", () => {
+    const shares = computeCountryShares([
+      { country: "United States", searches: 2800 },
+      { country: "France", searches: 2800 },
+      { country: "India", searches: 2300 },
+      { country: "United Kingdom", searches: 1260 },
+    ]);
+    expect(shares).not.toBeNull();
+    expect(shares![0]).toMatchObject({ country: "United States", pct: 30.6 });
+    expect(shares![1]).toMatchObject({ country: "France", pct: 30.6 });
+    expect(shares![2]).toMatchObject({ country: "India", pct: 25.1 });
+    expect(shares![3]).toMatchObject({ country: "United Kingdom", pct: 13.8 });
+    const total = shares!.reduce((s, r) => s + r.pct, 0);
+    expect(total).toBeGreaterThan(99);
+    expect(total).toBeLessThanOrEqual(100.5); // 1-decimal rounding can push it just over 100
+  });
+
+  it("excludes countries with no measured searches", () => {
+    const shares = computeCountryShares([
+      { country: "United States", searches: 1000 },
+      { country: "Germany", searches: null },
+      { country: "Canada", searches: 0 },
+    ]);
+    expect(shares).toHaveLength(1);
+    expect(shares![0]).toMatchObject({ country: "United States", pct: 100 });
+  });
+
+  it("returns null when nothing is measurable", () => {
+    expect(computeCountryShares([])).toBeNull();
+    expect(
+      computeCountryShares([
+        { country: "United States", searches: null },
+        { country: "France", searches: 0 },
+      ]),
+    ).toBeNull();
+  });
+});
+
+describe("parseHistoricalMetrics", () => {
+  it("parses and sorts monthly volumes chronologically", () => {
+    const history = parseHistoricalMetrics({
+      metrics: [
+        {
+          monthlySearchVolumes: [
+            { month: "DECEMBER", year: 2025, monthlySearches: "673000" },
+            { month: "NOVEMBER", year: 2025, monthlySearches: 500000 },
+            { month: "OCTOBER", year: "2025", monthlySearches: "450000" },
+          ],
+        },
+      ],
+    });
+    expect(history).toEqual([
+      { month: "2025-10", label: "Oct 25", volume: 450000 },
+      { month: "2025-11", label: "Nov 25", volume: 500000 },
+      { month: "2025-12", label: "Dec 25", volume: 673000 },
+    ]);
+  });
+
+  it("keeps only the last 12 months", () => {
+    const vols = Array.from({ length: 14 }, (_, i) => ({
+      month: "JANUARY",
+      year: 2024 + Math.floor(i / 12),
+      monthlySearches: 1000 + i,
+    }));
+    const history = parseHistoricalMetrics({ metrics: [{ monthlySearchVolumes: vols }] });
+    expect(history).toHaveLength(12);
+  });
+
+  it("returns null for missing or garbage responses", () => {
+    expect(parseHistoricalMetrics({})).toBeNull();
+    expect(parseHistoricalMetrics(null)).toBeNull();
+    expect(
+      parseHistoricalMetrics({ metrics: [{ monthlySearchVolumes: [{ month: "NOPE", year: 2025, monthlySearches: 5 }] }] }),
+    ).toBeNull();
   });
 });

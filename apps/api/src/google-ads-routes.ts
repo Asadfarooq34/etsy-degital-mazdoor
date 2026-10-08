@@ -12,6 +12,8 @@ import {
   adCompetitionLabel,
   buildAuthUrl,
   exchangeCode,
+  getCountryBreakdown,
+  getHistoricalVolumes,
   getKeywordIdeas,
   isConfigured,
   isConnected,
@@ -111,6 +113,54 @@ export function registerGoogleAdsRoutes(app: FastifyInstance): void {
           cpcLow: idea.lowTopPageBid,
           cpcHigh: idea.highTopPageBid,
         };
+      } catch (e) {
+        reply.code(502);
+        return { error: e instanceof Error ? e.message : "Google Ads request failed." };
+      }
+    },
+  );
+
+  /** Share of Google search demand per country (real Google Ads data). */
+  app.get<{ Querystring: { keyword?: string } }>(
+    "/api/google-ads/countries",
+    async (req, reply) => {
+      const cfg = loadConfig();
+      if (!cfg?.refreshToken) {
+        reply.code(400);
+        return { error: "Google Ads not connected — open /api/google-ads/connect first." };
+      }
+      const keyword = (req.query.keyword ?? "").trim();
+      if (!keyword) {
+        reply.code(400);
+        return { error: "keyword is required." };
+      }
+      try {
+        const countries = await getCountryBreakdown(cfg, keyword);
+        return { keyword, source: "Google Ads API", countries: countries ?? [] };
+      } catch (e) {
+        reply.code(502);
+        return { error: e instanceof Error ? e.message : "Google Ads request failed." };
+      }
+    },
+  );
+
+  /** Real monthly Google search volumes, past 12 months (Google Ads data). */
+  app.get<{ Querystring: { keyword?: string } }>(
+    "/api/google-ads/history",
+    async (req, reply) => {
+      const cfg = loadConfig();
+      if (!cfg?.refreshToken) {
+        reply.code(400);
+        return { error: "Google Ads not connected — open /api/google-ads/connect first." };
+      }
+      const keyword = (req.query.keyword ?? "").trim();
+      if (!keyword) {
+        reply.code(400);
+        return { error: "keyword is required." };
+      }
+      try {
+        const history = await getHistoricalVolumes(cfg, keyword);
+        return { keyword, source: "Google Ads API", history: history ?? [] };
       } catch (e) {
         reply.code(502);
         return { error: e instanceof Error ? e.message : "Google Ads request failed." };

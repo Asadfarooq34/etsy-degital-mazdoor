@@ -23,7 +23,7 @@ import {
 import type { EtsyClient } from "./etsy.js";
 import { getDb } from "./db.js";
 import { googleInterest, peakMonth, trendDirection } from "./trends.js";
-import { adCompetitionLabel, getKeywordIdeas, loadConfig } from "./google-ads.js";
+import { adCompetitionLabel, getCountryBreakdown, getHistoricalVolumes, getKeywordIdeas, loadConfig } from "./google-ads.js";
 
 /** Real Google Ads keyword data when connected; null otherwise (never throws). */
 async function getGoogleAdsKeywordData(kw: string) {
@@ -40,6 +40,28 @@ async function getGoogleAdsKeywordData(kw: string) {
       cpcLow: idea.lowTopPageBid,
       cpcHigh: idea.highTopPageBid,
     };
+  } catch {
+    return null;
+  }
+}
+
+/** Searchers-by-country shares when Ads connected; null otherwise (never throws). */
+async function getGoogleAdsCountries(kw: string) {
+  const cfg = loadConfig();
+  if (!cfg?.refreshToken) return null;
+  try {
+    return await getCountryBreakdown(cfg, kw);
+  } catch {
+    return null;
+  }
+}
+
+/** Real 12-month Google volumes when Ads connected; null otherwise (never throws). */
+async function getGoogleAdsHistory(kw: string) {
+  const cfg = loadConfig();
+  if (!cfg?.refreshToken) return null;
+  try {
+    return await getHistoricalVolumes(cfg, kw);
   } catch {
     return null;
   }
@@ -90,9 +112,13 @@ export function registerKeywordFullRoutes(app: FastifyInstance, etsy: EtsyClient
     // 1. Main sample: top 100 listings for the keyword (+ Google Trends + Google Ads in parallel).
     const trendsPromise = googleInterest(kw).catch(() => null);
     const adsPromise = getGoogleAdsKeywordData(kw).catch(() => null);
+    const countriesPromise = getGoogleAdsCountries(kw).catch(() => null);
+    const historyPromise = getGoogleAdsHistory(kw).catch(() => null);
     const { listings, count } = await etsy.searchListings(kw, 100);
     const trends = await trendsPromise;
     const adsData = await adsPromise;
+    const googleCountries = await countriesPromise;
+    const googleHistory = await historyPromise;
     const competition = live ? count : 45_300;
 
     const viewsList = listings.map((l) => viewsNum(l.views ?? estimateViews(l.numFavorers, viewsRatioForCategory(l.taxonomyId, l.tags))));
@@ -275,6 +301,10 @@ export function registerKeywordFullRoutes(app: FastifyInstance, etsy: EtsyClient
       googleNote: adsData?.found
         ? `Real Google Ads data — ${adsData.avgMonthlySearches?.toLocaleString() ?? "—"} avg. monthly searches, CPC $${adsData.cpcLow ?? "—"}–$${adsData.cpcHigh ?? "—"}.`
         : "Google search volume & CPC need the paid Google Ads API — not connected. Use the Trends page (Google Trends proxy) for demand direction.",
+      /** Real Google Ads country shares; null when Ads not connected. */
+      googleCountries,
+      /** Real Google Ads 12-month monthly volumes; null when Ads not connected. */
+      googleHistory,
     };
   });
 }
