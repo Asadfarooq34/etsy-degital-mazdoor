@@ -23,6 +23,27 @@ import {
 import type { EtsyClient } from "./etsy.js";
 import { getDb } from "./db.js";
 import { googleInterest, peakMonth, trendDirection } from "./trends.js";
+import { adCompetitionLabel, getKeywordIdeas, loadConfig } from "./google-ads.js";
+
+/** Real Google Ads keyword data when connected; null otherwise (never throws). */
+async function getGoogleAdsKeywordData(kw: string) {
+  const cfg = loadConfig();
+  if (!cfg?.refreshToken) return null;
+  try {
+    const idea = await getKeywordIdeas(cfg, kw);
+    if (!idea) return { found: false as const };
+    return {
+      found: true as const,
+      keyword: idea.keyword,
+      avgMonthlySearches: idea.avgMonthlySearches,
+      adCompetition: adCompetitionLabel(idea.competition, idea.competitionIndex),
+      cpcLow: idea.lowTopPageBid,
+      cpcHigh: idea.highTopPageBid,
+    };
+  } catch {
+    return null;
+  }
+}
 
 const DAY_SECONDS = 86_400;
 const MAX_IDEAS = 12;
@@ -66,10 +87,12 @@ export function registerKeywordFullRoutes(app: FastifyInstance, etsy: EtsyClient
     if (!kw) throw Object.assign(new Error("?keyword= is required"), { statusCode: 400 });
     const live = etsy.effectiveMode === "live";
 
-    // 1. Main sample: top 100 listings for the keyword (+ Google Trends in parallel).
+    // 1. Main sample: top 100 listings for the keyword (+ Google Trends + Google Ads in parallel).
     const trendsPromise = googleInterest(kw).catch(() => null);
+    const adsPromise = getGoogleAdsKeywordData(kw).catch(() => null);
     const { listings, count } = await etsy.searchListings(kw, 100);
     const trends = await trendsPromise;
+    const adsData = await adsPromise;
     const competition = live ? count : 45_300;
 
     const viewsList = listings.map((l) => viewsNum(l.views ?? estimateViews(l.numFavorers, viewsRatioForCategory(l.taxonomyId, l.tags))));
@@ -248,8 +271,10 @@ export function registerKeywordFullRoutes(app: FastifyInstance, etsy: EtsyClient
         : null,
       trendsNote:
         "Google web-search interest (0–100), NOT Etsy search volume. Labeled proxy.",
-      googleNote:
-        "Google search volume & CPC need the paid Google Ads API — not connected. Use the Trends page (Google Trends proxy) for demand direction.",
+      googleAds: adsData,
+      googleNote: adsData?.found
+        ? `Real Google Ads data — ${adsData.avgMonthlySearches?.toLocaleString() ?? "—"} avg. monthly searches, CPC $${adsData.cpcLow ?? "—"}–$${adsData.cpcHigh ?? "—"}.`
+        : "Google search volume & CPC need the paid Google Ads API — not connected. Use the Trends page (Google Trends proxy) for demand direction.",
     };
   });
 }

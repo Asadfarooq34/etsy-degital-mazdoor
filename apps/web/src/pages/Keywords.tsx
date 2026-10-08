@@ -214,6 +214,24 @@ export default function Keywords() {
                 <span>Competition</span>
                 <strong>{fmt(result.statistics.competition)}</strong>
               </div>
+              {result.googleAds?.found ? (
+                <>
+                  <div className="stat-note" style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
+                    <span title="Real data from Google Ads API">Google volume <span className="badge badge-pass">LIVE</span></span>
+                    <strong>{result.googleAds.avgMonthlySearches?.toLocaleString() ?? "—"}/mo</strong>
+                  </div>
+                  <div className="stat-note" style={{ display: "flex", justifyContent: "space-between", padding: "6px 0", borderBottom: "1px solid var(--border)" }}>
+                    <span>CPC range</span>
+                    <strong>${result.googleAds.cpcLow ?? "—"} – ${result.googleAds.cpcHigh ?? "—"}</strong>
+                  </div>
+                  <div className="stat-note" style={{ display: "flex", justifyContent: "space-between", padding: "6px 0" }}>
+                    <span>Ad competition</span>
+                    <strong>{result.googleAds.adCompetition}</strong>
+                  </div>
+                </>
+              ) : (
+                <p className="stat-note" style={{ marginTop: 8 }}>{result.googleNote}</p>
+              )}
             </div>
 
             <div className="card">

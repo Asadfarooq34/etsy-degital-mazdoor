@@ -338,6 +338,14 @@ export interface KeywordFull {
   } | null;
   trendsNote: string;
   googleNote: string;
+  googleAds: {
+    found: boolean;
+    keyword?: string;
+    avgMonthlySearches?: number | null;
+    adCompetition?: string;
+    cpcLow?: number | null;
+    cpcHigh?: number | null;
+  } | null;
 }
 
 export interface TopSeller {
