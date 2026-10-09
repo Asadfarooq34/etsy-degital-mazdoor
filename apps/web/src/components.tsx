@@ -15,7 +15,7 @@ import type {
 } from "react";
 
 /* ============================================================================
-   DIGITAL MAZDOOR — DESIGN SYSTEM components
+   DIGITAL MAZDUR — DESIGN SYSTEM components
    Tokens: src/design-tokens.css (--dm-*). Visual layer: index.css.
    Everything here is typed, dependency-free, and additive — existing exports
    (PageHeader, StatCard, ModeBadge, Skeleton, CardSkeleton, EmptyState,
@@ -149,7 +149,7 @@ export function LoadingButton({
    Logo — original "DM" monogram. Geometric letterforms on a purple rounded
    square. Do NOT copy or reuse any third-party brand mark.
    ---------------------------------------------------------------------------- */
-export function Logo({ size = 38, title = "Digital Mazdoor" }: { size?: number; title?: string }) {
+export function Logo({ size = 38, title = "Digital Mazdur" }: { size?: number; title?: string }) {
   return (
     <svg width={size} height={size} viewBox="0 0 48 48" role="img" aria-label={title}>
       <title>{title}</title>
@@ -600,7 +600,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
   }
 
   componentDidCatch(error: Error, info: ErrorInfo): void {
-    console.error("[Digital Mazdoor] Uncaught render error:", error, info.componentStack);
+    console.error("[Digital Mazdur] Uncaught render error:", error, info.componentStack);
   }
 
   private reset = (): void => {

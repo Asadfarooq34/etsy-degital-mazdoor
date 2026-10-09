@@ -1,4 +1,4 @@
-# Digital Mazdoor — Personal Etsy Research Toolkit
+# Digital Mazdur — Personal Etsy Research Toolkit
 
 Personal, **local-only** Etsy product/keyword research webapp. Single user (Asad).
 Runs on your own computer; API keys never leave this machine.

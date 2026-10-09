@@ -191,7 +191,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
   app
     .listen({ port: PORT, host: "127.0.0.1" })
     .then(() => {
-      app.log.info(`Digital Mazdoor API on http://127.0.0.1:${PORT}`);
+      app.log.info(`Digital Mazdur API on http://127.0.0.1:${PORT}`);
       // Daily snapshot poller for tracked shops (competitor sales velocity).
       // Cheap, local-only, and keeps running as long as the dev server runs.
       const etsyForPoll = new EtsyClient();

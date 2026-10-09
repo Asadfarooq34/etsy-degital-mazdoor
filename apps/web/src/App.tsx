@@ -503,7 +503,7 @@ function PublicShell({ children }: { children: ReactNode }) {
     <div className="public-wrap">
       <div className="public-inner">
         <Link to="/" className="public-back">
-          ← Digital Mazdoor home
+          ← Digital Mazdur home
         </Link>
         {children}
       </div>
@@ -603,7 +603,7 @@ function DashboardShell({
             <Logo size={38} />
           </div>
           <div className="brand-text">
-            <div className="brand-name">Digital Mazdoor</div>
+            <div className="brand-name">Digital Mazdur</div>
             <div className="brand-sub">Etsy research toolkit</div>
           </div>
           <button

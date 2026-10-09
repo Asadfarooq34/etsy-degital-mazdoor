@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Digital Mazdoor API — server-side auth acceptance tests.
+# Digital Mazdur API — server-side auth acceptance tests.
 #
 # What it does:
 #   1. Starts the API on throwaway ports with a throwaway ADMIN_PASSWORD and a
@@ -92,7 +92,7 @@ set_cookie_line() { grep -i '^set-cookie:' "$HFILE" | head -1 || true; }
 mask_token() { sed -E 's/^(set-cookie:[[:space:]]*dm_session=)[^;]*/\1<session-token-masked>/i'; }
 
 log "=================================================================="
-log "Digital Mazdoor auth acceptance run — $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+log "Digital Mazdur auth acceptance run — $(date -u '+%Y-%m-%dT%H:%M:%SZ')"
 log "APP=$APP   PW=throwaway-test-value"
 log "=================================================================="
 

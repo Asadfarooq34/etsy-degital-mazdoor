@@ -1,4 +1,4 @@
-# Manual QA Checklist — Digital Mazdoor frontend acceptance
+# Manual QA Checklist — Digital Mazdur frontend acceptance
 
 Code-review verification for acceptance tests 1, 2, 4–10 + subdomain was done
 in-repo (VERIFIED-IN-CODE). Everything below needs a real browser / real device —

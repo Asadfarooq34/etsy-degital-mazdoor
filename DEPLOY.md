@@ -1,4 +1,4 @@
-# DEPLOY.md — Digital Mazdoor production deploy guide
+# DEPLOY.md — Digital Mazdur production deploy guide
 
 > v1 target: one small VM, public domain (domain not purchased yet — see
 > "Blocked until domain purchase" at the bottom). Nothing here costs anything
@@ -66,7 +66,7 @@
 
 - `apps/web/public/robots.txt` → `Allow: /`, `Disallow: /dashboard/`, `Disallow: /api/`, sitemap pointer (host placeholder — replace after domain buy).
 - `apps/web/public/sitemap.xml` → `/`, `/login`, `/contact`, `/privacy`, `/terms` (placeholder `yourdomain.com` — replace after domain buy).
-- `index.html` verified: `<title>Digital Mazdoor — Personal Etsy Research Toolkit</title>`, meta description, `theme-color`, OG tags (`og:title`, `og:description`, `og:type`, `og:image`). One render-blocking note: Google Fonts `<link rel="stylesheet">` blocks first paint (~standard for Inter; acceptable).
+- `index.html` verified: `<title>Digital Mazdur — Personal Etsy Research Toolkit</title>`, meta description, `theme-color`, OG tags (`og:title`, `og:description`, `og:type`, `og:image`). One render-blocking note: Google Fonts `<link rel="stylesheet">` blocks first paint (~standard for Inter; acceptable).
 - Dashboard is behind the login gate + `Disallow: /dashboard/` — it will not be indexed.
 
 ## 8. Deploy procedure (Option A, Ubuntu VM)
