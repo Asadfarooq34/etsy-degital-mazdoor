@@ -1,0 +1,27 @@
+From 399f670608e8f3fc2ff8f04a11f96f67ce4baba6 Mon Sep 17 00:00:00 2001
+From: Asad <asad@local>
+Date: Sat, 10 Oct 2026 03:49:50 +0500
+Subject: [PATCH] web: remove stale 'email coming soon' note on Contact page
+
+---
+ apps/web/src/pages/Contact.tsx | 4 ----
+ 1 file changed, 4 deletions(-)
+
+diff --git a/apps/web/src/pages/Contact.tsx b/apps/web/src/pages/Contact.tsx
+index f4f9987..83147bb 100644
+--- a/apps/web/src/pages/Contact.tsx
++++ b/apps/web/src/pages/Contact.tsx
+@@ -87,10 +87,6 @@ export default function Contact({ go }: { go: (page: "privacy" | "terms") => voi
+           <div className="contact-method">
+             <div className="contact-method-label">Support email</div>
+             <div className="contact-method-value">asadfarooq7985@gmail.com</div>
+-            <p className="stat-note">
+-              A direct support email address will be added here soon. Until then, the form
+-              above is the way to reach us.
+-            </p>
+           </div>
+         </Card>
+ 
+-- 
+2.43.0
+

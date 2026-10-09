@@ -87,10 +87,6 @@ export default function Contact({ go }: { go: (page: "privacy" | "terms") => voi
           <div className="contact-method">
             <div className="contact-method-label">Support email</div>
             <div className="contact-method-value">asadfarooq7985@gmail.com</div>
-            <p className="stat-note">
-              A direct support email address will be added here soon. Until then, the form
-              above is the way to reach us.
-            </p>
           </div>
         </Card>
 
