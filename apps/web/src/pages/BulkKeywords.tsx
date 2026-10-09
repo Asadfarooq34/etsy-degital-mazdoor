@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, type BulkRow } from "../api";
+import { EmptyState, ErrorState, ModeBadge, PageHeader, TableSkeleton } from "../components";
 
 function avgViewsCell(v: BulkRow["avgViews"]) {
   if (typeof v === "number") return <>{v.toLocaleString()}</>;
@@ -36,15 +37,11 @@ export default function BulkKeywords() {
 
   return (
     <div>
-      <h1 className="page-title">Bulk Keywords</h1>
-      <p className="page-sub">
-        Up to 25 keywords, one per line — side-by-side difficulty and opportunity.{" "}
-        {mode === "fixture" ? (
-          <span className="badge badge-fixture">FIXTURE DATA</span>
-        ) : (
-          <span className="badge badge-live">LIVE</span>
-        )}
-      </p>
+      <PageHeader
+        title="Bulk Keywords"
+        sub="Up to 25 keywords, one per line — side-by-side difficulty and opportunity."
+        badge={rows && <ModeBadge mode={mode} />}
+      />
 
       <div className="card">
         <div className="field">
@@ -65,40 +62,54 @@ export default function BulkKeywords() {
         </div>
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && <ErrorState message={error} onRetry={() => void analyze()} />}
 
-      {rows && (
+      {loading && rows === null && (
         <div className="card">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Keyword</th>
-                <th>Competition</th>
-                <th>Difficulty</th>
-                <th>Opportunity</th>
-                <th>Avg views</th>
-                <th>Verdict</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.keyword}>
-                  <td>{r.keyword}</td>
-                  <td>{r.competition.toLocaleString()}</td>
-                  <td>{r.difficulty}</td>
-                  <td>{r.opportunity}</td>
-                  <td>{avgViewsCell(r.avgViews)}</td>
-                  <td>
-                    {r.difficultyPass ? (
-                      <span className="badge badge-pass">PASS (&lt; 50)</span>
-                    ) : (
-                      <span className="badge badge-fail">FAIL</span>
-                    )}
-                  </td>
+          <TableSkeleton rows={5} cols={6} />
+        </div>
+      )}
+
+      {rows !== null && !loading && (
+        <div className="card">
+          {rows.length === 0 ? (
+            <EmptyState
+              icon="🔍"
+              title="No results"
+              hint="The analysis returned no rows — check your keywords and try again."
+            />
+          ) : (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Keyword</th>
+                  <th>Competition</th>
+                  <th>Difficulty</th>
+                  <th>Opportunity</th>
+                  <th>Avg views</th>
+                  <th>Verdict</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {rows.map((r) => (
+                  <tr key={r.keyword}>
+                    <td>{r.keyword}</td>
+                    <td>{r.competition.toLocaleString()}</td>
+                    <td>{r.difficulty}</td>
+                    <td>{r.opportunity}</td>
+                    <td>{avgViewsCell(r.avgViews)}</td>
+                    <td>
+                      {r.difficultyPass ? (
+                        <span className="badge badge-pass">PASS (&lt; 50)</span>
+                      ) : (
+                        <span className="badge badge-fail">FAIL</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
       )}
     </div>

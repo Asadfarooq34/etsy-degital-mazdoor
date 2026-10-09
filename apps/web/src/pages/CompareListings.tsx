@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api, type CompareListingsResult, type CompareListing } from "../api";
-import { ModeBadge, PageHeader } from "../components";
+import { ErrorState, ModeBadge, PageHeader, TableSkeleton } from "../components";
 
 function Row({ label, a, b, better }: { label: string; a: string; b: string; better?: "a" | "b" }) {
   return (
@@ -81,9 +81,15 @@ export default function CompareListings() {
         </div>
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && <ErrorState message={error} onRetry={() => void compare()} />}
 
-      {la && lb && (
+      {loading && !result && (
+        <div className="card">
+          <TableSkeleton rows={8} cols={3} />
+        </div>
+      )}
+
+      {la && lb && !loading && (
         <div className="card">
           <table className="table">
             <thead>

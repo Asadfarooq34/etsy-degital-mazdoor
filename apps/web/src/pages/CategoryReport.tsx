@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, type CategoryReport } from "../api";
+import { EmptyState, ErrorState, LoadingButton, ModeBadge, PageHeader } from "../components";
 
 function competitionBadge(level: "Low" | "Medium" | "High") {
   const cls =
@@ -33,10 +34,11 @@ export default function CategoryReportPage() {
 
   return (
     <div>
-      <h1 className="page-title">Category Report</h1>
-      <p className="page-sub">
-        Market snapshot for a niche — live listings, prices, defining tags, top sellers.
-      </p>
+      <PageHeader
+        title="Category Report"
+        sub="Market snapshot for a niche — live listings, prices, defining tags, top sellers."
+        badge={result && <ModeBadge mode={result.mode} />}
+      />
 
       <div className="card">
         <div className="row">
@@ -51,26 +53,25 @@ export default function CategoryReportPage() {
               onKeyDown={(e) => e.key === "Enter" && void analyze()}
             />
           </div>
-          <button className="btn btn-green" onClick={() => void analyze()} disabled={loading}>
-            {loading ? "Analyzing…" : "Analyze →"}
-          </button>
+          <LoadingButton
+            className="btn btn-green"
+            onClick={() => void analyze()}
+            loading={loading}
+          >
+            Analyze →
+          </LoadingButton>
         </div>
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && (
+        <ErrorState message={error} onRetry={() => void analyze()} retryLabel="Analyze again" />
+      )}
 
       {result && (
         <div>
-          <h2>
-            &ldquo;{result.keyword}&rdquo;{" "}
-            {result.mode === "fixture" ? (
-              <span className="badge badge-fixture">FIXTURE DATA</span>
-            ) : (
-              <span className="badge badge-live">LIVE</span>
-            )}
-          </h2>
+          <h2>&ldquo;{result.keyword}&rdquo;</h2>
 
-          <div className="stats">
+          <div className="stats-grid">
             <div className="stat">
               <div className="stat-label">Live listings</div>
               <div className="stat-value">{result.stats.liveListings.toLocaleString()}</div>
@@ -161,6 +162,12 @@ export default function CategoryReportPage() {
 
           <div className="card">
             <h3>Top listings by views</h3>
+            {result.topListings.length === 0 ? (
+              <EmptyState
+                title="No listings found"
+                hint="Nothing on Etsy matches this niche right now — try a broader keyword."
+              />
+            ) : (
             <div
               style={{
                 display: "grid",
@@ -184,6 +191,7 @@ export default function CategoryReportPage() {
                 </a>
               ))}
             </div>
+            )}
           </div>
         </div>
       )}

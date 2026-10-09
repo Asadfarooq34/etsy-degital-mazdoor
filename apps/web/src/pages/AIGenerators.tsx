@@ -51,7 +51,7 @@ export function EtsyListingPro() {
     <AIGenerator
       kind="listing"
       title="Etsy Listing Pro"
-      subtitle="A whole listing + AI images in one click"
+      subtitle="AI-generated title, tags, description and pricing guidance"
       cardTitle="Etsy Listing Pro"
       description="Describe your product and get a complete listing — one optimized title, 13 tags, a description, a price anchored to the real market median. The price is an AI suggestion, not a guarantee."
       placeholder="e.g. personalized birth flower sweatshirt…"
@@ -65,11 +65,11 @@ export function EtsyListingPro() {
 export function AIListingHelper() {
   return (
     <AIGenerator
-      kind="listing"
+      kind="helper"
       title="AI Listing Helper"
       subtitle="AI title, tags & description"
       cardTitle="Describe your product"
-      description="Grounded in real listing tags. One shot — title, tags and description together."
+      description="Grounded in real listing tags. One shot — title, tags and description together. For pricing guidance, use Etsy Listing Pro."
       placeholder="e.g. personalized birthstone necklace for mom"
       buttonText="Generate listing"
       emptyText="No listing yet"

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, type AlertItem } from "../api";
+import { Badge, EmptyState, ErrorState, PageHeader } from "../components";
 
 export default function Alerts() {
   const [kwInput, setKwInput] = useState("");
@@ -60,11 +61,11 @@ export default function Alerts() {
 
   return (
     <div>
-      <h1 className="page-title">Alerts</h1>
-      <p className="page-sub">
-        Get notified when tracked keywords change (competition ±20%, difficulty crossing 50).{" "}
-        {unreadCount > 0 && <span className="badge badge-fail">{unreadCount} unread</span>}
-      </p>
+      <PageHeader
+        title="Alerts"
+        sub="Get notified when tracked keywords change (competition ±20%, difficulty crossing 50)."
+        badge={unreadCount > 0 ? <Badge tone="red">{unreadCount} unread</Badge> : undefined}
+      />
 
       <div className="card">
         <div className="row">
@@ -80,7 +81,7 @@ export default function Alerts() {
             />
           </div>
           <button className="btn btn-orange" onClick={() => void track()} disabled={loading}>
-            Track
+            {loading ? "Tracking…" : "Track"}
           </button>
           <button
             className="btn"
@@ -94,7 +95,7 @@ export default function Alerts() {
         <p className="stat-note">Checks also run daily while the API server runs.</p>
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && <ErrorState message={error} onRetry={() => void refresh()} />}
 
       {tracked.length > 0 && (
         <div className="card">
@@ -127,7 +128,11 @@ export default function Alerts() {
           )}
         </div>
         {alerts.length === 0 ? (
-          <p className="stat-note">No alerts yet. Changes are detected on each check.</p>
+          <EmptyState
+            icon="🔔"
+            title="No alerts yet"
+            hint="Changes are detected on each check. New alerts also appear in the Notifications page."
+          />
         ) : (
           <table className="table">
             <thead>

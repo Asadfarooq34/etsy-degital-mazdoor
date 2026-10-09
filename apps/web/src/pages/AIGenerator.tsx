@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
-import { PageHeader } from "../components";
+import { EmptyState, ErrorState, PageHeader } from "../components";
 
 interface Props {
-  kind: "titles" | "tags" | "descriptions" | "listing";
+  kind: "titles" | "tags" | "descriptions" | "listing" | "helper";
   title: string;
   subtitle: string;
   cardTitle: string;
@@ -46,6 +46,10 @@ export default function AIGenerator({
   } | null>(null);
   const [grounded, setGrounded] = useState(false);
 
+  // "helper" (AI Listing Helper) hits the same /api/ai/listing endpoint but
+  // renders a trimmed output — title + tags + description only (L16).
+  const isFullListing = kind === "listing" || kind === "helper";
+
   useEffect(() => {
     api
       .aiStatus()
@@ -78,6 +82,7 @@ export default function AIGenerator({
         });
         setResults(r.descriptions);
       } else {
+        // kind === "listing" or kind === "helper"
         const r = await api.aiListing(keyword.trim(), details);
         setListing(r);
         setGrounded(r.grounded);
@@ -103,7 +108,7 @@ export default function AIGenerator({
         </p>
         <div className="row">
           <div className="field">
-            <label htmlFor="kw">{kind === "listing" ? "What are you selling?" : "Focus keyword *"}</label>
+            <label htmlFor="kw">{isFullListing ? "What are you selling?" : "Focus keyword *"}</label>
             <input
               id="kw"
               className="input"
@@ -113,7 +118,7 @@ export default function AIGenerator({
               onKeyDown={(e) => e.key === "Enter" && void generate()}
             />
           </div>
-          {kind === "listing" && (
+          {isFullListing && (
             <div className="field" style={{ flex: 2 }}>
               <label htmlFor="det">Extra details (optional)</label>
               <input
@@ -193,7 +198,7 @@ export default function AIGenerator({
         )}
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && <ErrorState message={error} onRetry={() => void generate()} />}
 
       {results && (
         <div className="card">
@@ -226,8 +231,10 @@ export default function AIGenerator({
         <div className="card">
           {grounded && (
             <p className="stat-note" style={{ marginBottom: 12 }}>
-              <span className="badge badge-pass">grounded</span> Copy grounded in real tags & median
-              price. Suggested price is an AI suggestion, not a guarantee.
+              <span className="badge badge-pass">grounded</span>{" "}
+              {kind === "listing"
+                ? "Copy grounded in real tags & median price. Suggested price is an AI suggestion, not a guarantee."
+                : "Copy grounded in real listing tags."}
             </p>
           )}
           <h3>Title</h3>
@@ -240,17 +247,21 @@ export default function AIGenerator({
           </div>
           <h3 style={{ marginTop: 16 }}>Description</h3>
           <p style={{ whiteSpace: "pre-wrap" }}>{listing.description}</p>
-          <h3 style={{ marginTop: 16 }}>Suggested price</h3>
-          <p style={{ fontSize: 24, fontWeight: 800 }}>${listing.suggestedPrice}</p>
+          {kind === "listing" && (
+            <>
+              <h3 style={{ marginTop: 16 }}>Suggested price</h3>
+              <p style={{ fontSize: 24, fontWeight: 800 }}>${listing.suggestedPrice}</p>
+            </>
+          )}
         </div>
       )}
 
       {!results && !listing && !error && (
-        <div className="card" style={{ textAlign: "center", padding: "48px 24px" }}>
-          <div style={{ fontSize: 40, marginBottom: 12 }}>🤖</div>
-          <p style={{ fontWeight: 600 }}>{emptyText}</p>
-          <p className="stat-note">Enter {kind === "listing" ? "your product" : "a keyword"} above and hit generate.</p>
-        </div>
+        <EmptyState
+          icon="🤖"
+          title={emptyText}
+          hint={`Enter ${isFullListing ? "your product" : "a keyword"} above and hit generate.`}
+        />
       )}
     </div>
   );
