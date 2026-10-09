@@ -1,5 +1,12 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { api, type KeywordFull } from "../api";
+import {
+  ErrorState,
+  LoadingButton,
+  ModeBadge,
+  PageHeader,
+  Tooltip,
+} from "../components";
 
 const fmt = (n: number) =>
   n >= 1_000_000
@@ -127,6 +134,7 @@ export default function Keywords() {
   const [aiAnalysis, setAiAnalysis] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState("");
+  const [trendsLoading, setTrendsLoading] = useState(false);
 
   const analyze = async () => {
     if (!keyword.trim()) return;
@@ -139,6 +147,34 @@ export default function Keywords() {
       setResult(null);
     } finally {
       setLoading(false);
+    }
+  };
+
+  // L11: retry ONLY the trends fetch (cheap /api/trends call) instead of the
+  // full expensive analysis. Merges the fresh trends into the existing result.
+  const retryTrends = async () => {
+    if (!result) return;
+    setTrendsLoading(true);
+    setError("");
+    try {
+      const t = await api.trends(result.keyword);
+      setResult((prev) =>
+        prev
+          ? {
+              ...prev,
+              trends: {
+                monthly: t.monthly,
+                peakMonth: t.peakMonth,
+                direction: t.trend,
+                countries: t.countries,
+              },
+            }
+          : prev,
+      );
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "trend retry failed");
+    } finally {
+      setTrendsLoading(false);
     }
   };
 
@@ -171,13 +207,26 @@ export default function Keywords() {
   const maxCountry = result?.trends
     ? Math.max(1, ...result.trends.countries.map((c) => c.value))
     : 1;
+  // M1: real Google Ads data when connected; fall back to Trends proxies when null.
+  const realHistory =
+    result?.googleHistory && result.googleHistory.length > 0 ? result.googleHistory : null;
+  const realCountries =
+    result?.googleCountries && result.googleCountries.length > 0 ? result.googleCountries : null;
+  const maxCountryPct = realCountries
+    ? Math.max(1, ...realCountries.map((c) => c.pct))
+    : 1;
+  const realPeak =
+    realHistory && realHistory.length > 0
+      ? realHistory.reduce((a, b) => (b.volume >= a.volume ? b : a))
+      : null;
 
   return (
     <div>
-      <h1 className="page-title">Keywords</h1>
-      <p className="page-sub">
-        Full keyword overview — statistics, trends, market activity, difficulty, ideas.
-      </p>
+      <PageHeader
+        title="Keywords"
+        sub="Full keyword overview — statistics, trends, market activity, difficulty, ideas."
+        badge={result && <ModeBadge mode={result.mode} />}
+      />
 
       <div className="card">
         <div className="row">
@@ -192,33 +241,30 @@ export default function Keywords() {
               onKeyDown={(e) => e.key === "Enter" && void analyze()}
             />
           </div>
-          <button className="btn btn-blue" onClick={() => void analyze()} disabled={loading}>
-            {loading ? "Analyzing…" : "Search →"}
-          </button>
+          <LoadingButton
+            className="btn btn-blue"
+            onClick={() => void analyze()}
+            loading={loading}
+          >
+            Search →
+          </LoadingButton>
         </div>
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && (
+        <ErrorState
+          message={error}
+          onRetry={() => void analyze()}
+          retryLabel="Retry analysis"
+        />
+      )}
 
       {result && (
         <div>
-          <h2>
-            &ldquo;{result.keyword}&rdquo;{" "}
-            {result.mode === "fixture" ? (
-              <span className="badge badge-fixture">FIXTURE DATA</span>
-            ) : (
-              <span className="badge badge-live">LIVE</span>
-            )}
-          </h2>
+          <h2>&ldquo;{result.keyword}&rdquo;</h2>
 
           {/* Row 1: Statistics | Trends | Countries (RankKW top-row order) */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1.4fr 1fr",
-              gap: 12,
-            }}
-          >
+          <div className="grid-responsive" style={{ "--dm-cols": "3" } as CSSProperties}>
             <div className="card">
               <h3>Keyword statistics</h3>
               <div className="kw-sec-label">
@@ -289,8 +335,21 @@ export default function Keywords() {
             </div>
 
             <div className="card">
-              <h3>Search trends (12 months)</h3>
-              {result.trends ? (
+              <h3>
+                Search trends (12 months){" "}
+                {realHistory && <span className="badge badge-live">REAL VOLUME</span>}
+              </h3>
+              {realHistory ? (
+                <div>
+                  <TrendChart
+                    points={realHistory.map((h) => ({ label: h.label, value: h.volume }))}
+                  />
+                  <p className="stat-note">
+                    Real Google Ads monthly searches (paid API) — not a proxy. Peak:{" "}
+                    <strong>{realPeak?.label ?? "—"}</strong>
+                  </p>
+                </div>
+              ) : result.trends ? (
                 <div>
                   <TrendChart points={result.trends.monthly} />
                   <p className="stat-note">
@@ -308,16 +367,49 @@ export default function Keywords() {
               ) : (
                 <div className="kw-empty">
                   <p>Trend data loading…</p>
-                  <button className="btn" style={{ marginTop: 8, padding: "6px 14px", fontSize: 13 }} onClick={() => void analyze()} disabled={loading}>
-                    Retry
+                  <button className="btn" style={{ marginTop: 8, padding: "6px 14px", fontSize: 13 }} onClick={() => void retryTrends()} disabled={loading || trendsLoading}>
+                    {trendsLoading ? "Retrying…" : "Retry trends"}
                   </button>
                 </div>
               )}
             </div>
 
             <div className="card">
-              <h3>Searchers by country</h3>
-              {result.trends ? (
+              <h3>
+                Searchers by country{" "}
+                {realCountries && <span className="badge badge-live">REAL DATA</span>}
+              </h3>
+              {realCountries ? (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {realCountries.map((c) => (
+                    <div
+                      key={c.country}
+                      title={`${c.country}: ${c.searches.toLocaleString()} measured searches`}
+                      style={{ display: "flex", alignItems: "center", gap: 8 }}
+                    >
+                      <span style={{ minWidth: 110, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {c.country}
+                      </span>
+                      <div style={{ flex: 1, height: 8, background: "var(--border)", borderRadius: 4 }}>
+                        <div
+                          style={{
+                            width: `${(c.pct / maxCountryPct) * 100}%`,
+                            height: "100%",
+                            background: "var(--purple-600)",
+                            borderRadius: 4,
+                          }}
+                        />
+                      </div>
+                      <span className="stat-note" style={{ minWidth: 44, textAlign: "right" }}>
+                        {c.pct.toFixed(1)}%
+                      </span>
+                    </div>
+                  ))}
+                  <p className="stat-note">
+                    Real Google Ads data — share of measured searches, not a proxy.
+                  </p>
+                </div>
+              ) : result.trends ? (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {result.trends.countries.map((c) => (
                     <div key={c.country} style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -344,8 +436,8 @@ export default function Keywords() {
               ) : (
                 <div className="kw-empty">
                   <p>Country data loading…</p>
-                  <button className="btn" style={{ marginTop: 8, padding: "6px 14px", fontSize: 13 }} onClick={() => void analyze()} disabled={loading}>
-                    Retry
+                  <button className="btn" style={{ marginTop: 8, padding: "6px 14px", fontSize: 13 }} onClick={() => void retryTrends()} disabled={loading || trendsLoading}>
+                    {trendsLoading ? "Retrying…" : "Retry trends"}
                   </button>
                 </div>
               )}
@@ -403,13 +495,13 @@ export default function Keywords() {
                   The numbers above are real and measured — AI only interprets them, never invents.
                 </p>
               </div>
-              <button
+              <LoadingButton
                 className="btn btn-purple"
                 onClick={() => void runAiAnalysis()}
-                disabled={aiLoading}
+                loading={aiLoading}
               >
-                {aiLoading ? "Analyzing…" : "Analyze →"}
-              </button>
+                Analyze →
+              </LoadingButton>
             </div>
             {aiError && <p className="stat-note" style={{ color: "var(--red-600, #dc2626)", marginTop: 8 }}>{aiError}</p>}
             {aiAnalysis && (
@@ -420,7 +512,7 @@ export default function Keywords() {
           </div>
 
           {/* Row: Difficulty | Opportunities */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+          <div className="grid-responsive" style={{ "--dm-cols": "2", marginTop: 12 } as CSSProperties}>
             <div className="card">
               <h3>Keyword difficulty</h3>
               {d && (
@@ -488,7 +580,12 @@ export default function Keywords() {
               )}
             </div>
             <div className="card">
-              <h3>Best keyword opportunities</h3>
+              <h3>
+                Best keyword opportunities{" "}
+                <Tooltip tip="Opportunity (KD-based): computed from competition + save rate only. Search volume isn't available from any connected feed, so real demand is not part of this score.">
+                  <span className="badge badge-est">KD-based</span>
+                </Tooltip>
+              </h3>
               <p className="stat-note">Ranked best → worst by opportunity score</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
                 {result.opportunities.map((o) => (
@@ -575,7 +672,7 @@ export default function Keywords() {
           </div>
 
           {/* Row: Competition Mix | Difficulty Spread */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+          <div className="grid-responsive" style={{ "--dm-cols": "2", marginTop: 12 } as CSSProperties}>
             <div className="card">
               <h3>Competition mix</h3>
               <p className="stat-note">How many related keywords face each competition level</p>

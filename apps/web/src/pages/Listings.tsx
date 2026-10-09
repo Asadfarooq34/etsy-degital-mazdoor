@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, type EstimatedValue, type ListingsSearch } from "../api";
+import { EmptyState, ErrorState, LoadingButton, ModeBadge, PageHeader } from "../components";
 
 function viewsCell(v: number | EstimatedValue) {
   if (typeof v === "number") return <>{v.toLocaleString()}</>;
@@ -75,11 +76,17 @@ export default function Listings() {
 
   return (
     <div>
-      <h1 className="page-title">Listings</h1>
-      <p className="page-sub">
-        Browse live listings for a keyword — age, views, views/day, favorites. Views/day =
-        views ÷ age. Thumbnails aren't available — Etsy's search API doesn't return image URLs.
-      </p>
+      <PageHeader
+        title="Listings"
+        sub={
+          <>
+            Browse live listings for a keyword — age, views, views/day, favorites. Views/day =
+            views ÷ age. Thumbnails aren&apos;t available — Etsy&apos;s search API doesn&apos;t
+            return image URLs.
+          </>
+        }
+        badge={result && <ModeBadge mode={result.mode} />}
+      />
 
       <div className="card">
         <div className="row">
@@ -128,23 +135,21 @@ export default function Listings() {
               <option value="views">Views</option>
             </select>
           </div>
-          <button className="btn btn-blue" onClick={() => void search()} disabled={loading}>
-            {loading ? "Searching…" : "Apply"}
-          </button>
+          <LoadingButton className="btn btn-blue" onClick={() => void search()} loading={loading}>
+            Apply
+          </LoadingButton>
         </div>
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && (
+        <ErrorState message={error} onRetry={() => void search()} retryLabel="Search again" />
+      )}
 
       {result && (
         <>
           <p className="page-sub">
             {result.stats.totalResults.toLocaleString()} results · showing {filtered.length} ·{" "}
-            {result.mode === "fixture" ? (
-              <span className="badge badge-fixture">FIXTURE DATA</span>
-            ) : (
-              <span className="badge badge-live">LIVE</span>
-            )}
+            <ModeBadge mode={result.mode} />
           </p>
 
           <div className="grid-4" style={{ marginBottom: 16 }}>
@@ -194,6 +199,12 @@ export default function Listings() {
                 Export CSV
               </button>
             </div>
+            {filtered.length === 0 ? (
+              <EmptyState
+                title="No listings match the filter"
+                hint="Clear the filter text or widen the price range, then search again."
+              />
+            ) : (
             <table className="table">
               <thead>
                 <tr>
@@ -240,6 +251,7 @@ export default function Listings() {
                 ))}
               </tbody>
             </table>
+            )}
           </div>
         </>
       )}

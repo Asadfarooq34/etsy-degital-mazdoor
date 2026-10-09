@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { api, type MonthlyTrendsResult } from "../api";
+import { ErrorState, LoadingButton, ModeBadge, PageHeader } from "../components";
 
 export default function MonthlyTrends() {
   const [keyword, setKeyword] = useState("");
@@ -26,15 +27,11 @@ export default function MonthlyTrends() {
 
   return (
     <div>
-      <h1 className="page-title">Monthly Trends</h1>
-      <p className="page-sub">
-        Seasonality — when sellers list (Etsy, real) vs. buyer demand curve (Google proxy).{" "}
-        {result?.mode === "fixture" ? (
-          <span className="badge badge-fixture">FIXTURE DATA</span>
-        ) : (
-          result && <span className="badge badge-live">LIVE</span>
-        )}
-      </p>
+      <PageHeader
+        title="Monthly Trends"
+        sub="Seasonality — when sellers list (Etsy, real) vs. buyer demand curve (Google proxy)."
+        badge={result && <ModeBadge mode={result.mode} />}
+      />
 
       <div className="card">
         <div className="row">
@@ -49,13 +46,15 @@ export default function MonthlyTrends() {
               onKeyDown={(e) => e.key === "Enter" && void analyze()}
             />
           </div>
-          <button className="btn btn-blue" onClick={() => void analyze()} disabled={loading}>
-            {loading ? "Loading…" : "Analyze →"}
-          </button>
+          <LoadingButton className="btn btn-blue" onClick={() => void analyze()} loading={loading}>
+            Analyze →
+          </LoadingButton>
         </div>
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && (
+        <ErrorState message={error} onRetry={() => void analyze()} retryLabel="Analyze again" />
+      )}
 
       {result && (
         <div>
@@ -82,7 +81,10 @@ export default function MonthlyTrends() {
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12, marginBottom: 12 }}>
+          <div
+            className="grid-responsive"
+            style={{ "--dm-cols": "3", marginBottom: 12 } as CSSProperties}
+          >
             <div className="card" style={{ margin: 0 }}>
               <div className="stat-label">Peak month</div>
               <div className="stat-value">{result.peakMonth ?? "—"}</div>
@@ -153,7 +155,10 @@ export default function MonthlyTrends() {
             <p className="stat-note">Google web-search interest (0–100), NOT Etsy search volume.</p>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
+          <div
+            className="grid-responsive"
+            style={{ "--dm-cols": "2", marginTop: 12 } as CSSProperties}
+          >
             <div className="card" style={{ margin: 0 }}>
               <h3>Price distribution</h3>
               <div style={{ display: "flex", alignItems: "flex-end", gap: 3, height: 100 }}>

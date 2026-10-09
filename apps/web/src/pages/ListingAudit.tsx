@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api, type ListingAuditResult } from "../api";
-import { ModeBadge, PageHeader } from "../components";
+import { ErrorState, ModeBadge, PageHeader, TableSkeleton } from "../components";
 
 function statusBadge(s: string) {
   const cls = s === "pass" ? "badge-pass" : s === "warn" ? "badge-est" : "badge-fail";
@@ -55,9 +55,15 @@ export default function ListingAudit() {
         <p className="stat-note">Paste the listing ID or the full Etsy listing URL.</p>
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && <ErrorState message={error} onRetry={() => void audit()} />}
 
-      {result && (
+      {loading && result === null && (
+        <div className="card">
+          <TableSkeleton rows={6} cols={4} />
+        </div>
+      )}
+
+      {result && !loading && (
         <>
           <div className="card" style={{ textAlign: "center" }}>
             <div style={{ fontSize: 56, fontWeight: 800, color: "var(--purple-700)" }}>
