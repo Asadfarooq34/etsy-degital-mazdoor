@@ -15,6 +15,7 @@ import {
 } from "@digital-mazdoor/core";
 import { FIXTURE_BUZZ_TAGS, fixtureShopName } from "./fixtures.js";
 import type { EtsyClient } from "./etsy.js";
+import { parseOptionalNumber } from "./validate.js";
 
 const DAY_SECONDS = 86_400;
 
@@ -108,10 +109,12 @@ export function registerResearchRoutes(app: FastifyInstance, etsy: EtsyClient): 
     };
     if (!keyword.trim()) throw badRequest("?keyword= is required");
 
+    // M5: non-numeric price filters → 400, never a silent 0-row result.
+    const lo = parseOptionalNumber(minPrice, "minPrice") ?? 0;
+    const hi = parseOptionalNumber(maxPrice, "maxPrice") ?? Infinity;
+
     const { listings, count } = await etsy.searchListings(keyword, 100);
     const live = etsy.effectiveMode === "live";
-    const lo = minPrice.trim() === "" ? 0 : Number(minPrice);
-    const hi = maxPrice.trim() === "" ? Infinity : Number(maxPrice);
 
     const rows = listings
       .filter((l) => l.price.amount >= lo && l.price.amount <= hi)

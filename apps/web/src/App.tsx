@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
+import { Button, ErrorBoundary, Logo } from "./components";
 import Overview from "./pages/Overview";
 import Keywords from "./pages/Keywords";
 import Listings from "./pages/Listings";
@@ -26,8 +27,15 @@ import { TitleGenerator, TagGenerator, DescriptionGenerator, EtsyListingPro, AIL
 import MyShop from "./pages/MyShop";
 import Notifications from "./pages/Notifications";
 import MoreTools from "./pages/MoreTools";
+import Login from "./pages/Login";
+import Contact from "./pages/Contact";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+import NotFound from "./pages/NotFound";
+import { api, setUnauthorizedHandler } from "./api";
 
 type Page =
+  | "login"
   | "overview"
   | "myshop"
   | "notifications"
@@ -58,7 +66,11 @@ type Page =
   | "aihelper"
   | "automate"
   | "tools"
-  | "fees";
+  | "fees"
+  | "contact"
+  | "privacy"
+  | "terms"
+  | "notfound";
 
 /** Inline line-icon set (24×24, stroke=currentColor). No dependencies. */
 function Icon({ children }: { children: ReactNode }) {
@@ -79,6 +91,12 @@ function Icon({ children }: { children: ReactNode }) {
 }
 
 const ICONS: Record<Page, ReactNode> = {
+  login: (
+    <Icon>
+      <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+      <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </Icon>
+  ),
   overview: (
     <Icon>
       <rect width="7" height="9" x="3" y="3" rx="1" />
@@ -308,6 +326,31 @@ const ICONS: Record<Page, ReactNode> = {
       <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
     </Icon>
   ),
+  contact: (
+    <Icon>
+      <rect width="20" height="16" x="2" y="4" rx="2" />
+      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+    </Icon>
+  ),
+  privacy: (
+    <Icon>
+      <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+      <path d="m9 12 2 2 4-4" />
+    </Icon>
+  ),
+  terms: (
+    <Icon>
+      <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
+      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+      <path d="m9 15 2 2 4-4" />
+    </Icon>
+  ),
+  notfound: (
+    <Icon>
+      <circle cx="12" cy="12" r="10" />
+      <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76" />
+    </Icon>
+  ),
 };
 
 const NAV: { section: string; items: { id: Page; label: string; soon?: boolean }[] }[] = [
@@ -362,13 +405,21 @@ const NAV: { section: string; items: { id: Page; label: string; soon?: boolean }
       { id: "tools", label: "More Tools" },
     ],
   },
+  {
+    section: "Legal",
+    items: [
+      { id: "contact", label: "Contact Us" },
+      { id: "privacy", label: "Privacy Policy" },
+      { id: "terms", label: "Terms of Service" },
+    ],
+  },
 ];
 
 function ApiStatus() {
   const [live, setLive] = useState<boolean | null>(null);
   useEffect(() => {
     let cancelled = false;
-    fetch("http://127.0.0.1:3001/health", { signal: AbortSignal.timeout(5000) })
+    fetch("/health", { signal: AbortSignal.timeout(5000) })
       .then((r) => {
         if (!cancelled) setLive(r.ok);
       })
@@ -390,11 +441,81 @@ function ApiStatus() {
 export default function App() {
   const [page, setPage] = useState<Page>("overview");
   const [navOpen, setNavOpen] = useState(false);
+  // null = still checking the session; false = show the login gate only.
+  const [authed, setAuthed] = useState<boolean | null>(null);
+  // Unread keyword-alert count for the Notifications nav badge (gap #9).
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .authStatus()
+      .then((s) => {
+        if (!cancelled) setAuthed(s.authenticated);
+      })
+      .catch(() => {
+        if (!cancelled) setAuthed(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Any API 401 (expired session, signed out elsewhere) drops back to login.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setAuthed(false);
+      setPage("login");
+    });
+  }, []);
+
+  // Refresh the Notifications nav badge. Re-runs on every page change so the
+  // count stays fresh after alerts are marked read on the Notifications page.
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .alertsList()
+      .then((r) => {
+        if (!cancelled) setUnread(r.unreadCount);
+      })
+      .catch(() => {
+        if (!cancelled) setUnread(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [page]);
 
   const go = (id: Page) => {
     setPage(id);
     setNavOpen(false);
   };
+
+  const signOut = async () => {
+    try {
+      await api.logout();
+    } catch {
+      /* session already gone — still drop to the gate */
+    }
+    setAuthed(false);
+    setPage("login");
+  };
+
+  if (authed === null) {
+    return <div className="login-checking">Checking session…</div>;
+  }
+  // Login gate: when not authenticated, render ONLY the login page —
+  // no sidebar, no nav, no data.
+  if (!authed || page === "login") {
+    return (
+      <Login
+        onSuccess={() => {
+          setAuthed(true);
+          setPage("overview");
+        }}
+      />
+    );
+  }
 
   return (
     <div className="app">
@@ -413,7 +534,9 @@ export default function App() {
       />
       <aside className={`sidebar ${navOpen ? "open" : ""}`}>
         <div className="brand">
-          <div className="brand-mark">DM</div>
+          <div className="brand-mark-logo">
+            <Logo size={38} />
+          </div>
           <div className="brand-text">
             <div className="brand-name">Digital Mazdoor</div>
             <div className="brand-sub">Etsy research toolkit</div>
@@ -436,6 +559,9 @@ export default function App() {
                   >
                     {ICONS[item.id]}
                     <span className="nav-label">{item.label}</span>
+                    {item.id === "notifications" && unread > 0 && (
+                      <span className="nav-badge">{unread}</span>
+                    )}
                     {item.soon && <span className="nav-soon">soon</span>}
                   </button>
                 );
@@ -447,12 +573,39 @@ export default function App() {
         <div className="sidebar-foot">
           <ApiStatus />
           <span className="foot-version">v0.3.0 · local-only</span>
+          <button className="foot-signout" onClick={signOut} title="Sign out">
+            Sign out
+          </button>
         </div>
       </aside>
 
       <main className="main">
-        {page === "overview" && <Overview go={(p) => go(p as Page)} />}
-        {page === "myshop" && <MyShop />}
+        {/* Global error boundary (audit M12): one broken page can no longer
+            unmount the whole app. key={page} resets it on navigation. */}
+        <ErrorBoundary
+          key={page}
+          fallback={({ reset }) => (
+            <div className="card">
+              <div className="error-state">
+                <div className="error-icon" aria-hidden="true">
+                  ⚠️
+                </div>
+                <div className="error-title">This page ran into a problem</div>
+                <div className="error-msg">
+                  Try again, or head back to Overview. If this keeps happening, restart the app.
+                </div>
+                <div style={{ display: "flex", gap: 8, justifyContent: "center", marginTop: 12 }}>
+                  <Button variant="secondary" onClick={reset}>
+                    Try again
+                  </Button>
+                  <Button onClick={() => go("overview")}>Back to Overview</Button>
+                </div>
+              </div>
+            </div>
+          )}
+        >
+          {page === "overview" && <Overview go={(p) => go(p as Page)} />}
+          {page === "myshop" && <MyShop />}
         {page === "notifications" && <Notifications />}
         {page === "keywords" && <Keywords />}
         {page === "listings" && <Listings />}
@@ -481,6 +634,11 @@ export default function App() {
         {page === "alerts" && <Alerts />}
         {page === "tools" && <MoreTools />}
         {page === "fees" && <FeeCalculator />}
+        {page === "contact" && <Contact go={(p) => go(p)} />}
+        {page === "privacy" && <Privacy />}
+        {page === "terms" && <Terms />}
+        {page === "notfound" && <NotFound onHome={() => go("overview")} />}
+        </ErrorBoundary>
       </main>
     </div>
   );

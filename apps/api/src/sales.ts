@@ -13,6 +13,7 @@ import type { FastifyInstance } from "fastify";
 import { salesVelocity } from "@digital-mazdoor/core";
 import { getDb } from "./db.js";
 import type { EtsyClient } from "./etsy.js";
+import { parseOptionalNumber } from "./validate.js";
 
 function nowIso(): string {
   return new Date().toISOString();
@@ -111,6 +112,8 @@ export function registerSalesRoutes(app: FastifyInstance, etsy: EtsyClient): voi
   app.get("/api/shops/:id/velocity", async (req) => {
     const { id } = req.params as { id: string };
     const { days = "30" } = req.query as { days?: string };
+    // M5: non-numeric days → 400 (was silently defaulting to 30).
+    const daysNum = parseOptionalNumber(days, "days") ?? 30;
     const shopId = Number(id);
     const db = getDb();
     const snaps = db
@@ -131,9 +134,9 @@ export function registerSalesRoutes(app: FastifyInstance, etsy: EtsyClient): voi
     }
 
     const summary = salesVelocity(snaps);
-    // Daily series for the chart (last N days).
-    const daysNum = Math.max(7, Math.min(90, Number(days) || 30));
-    const cutoff = Date.now() - daysNum * 86_400_000;
+    // Daily series for the chart (last N days), clamped to [7, 90].
+    const clampedDays = Math.max(7, Math.min(90, Math.round(daysNum)));
+    const cutoff = Date.now() - clampedDays * 86_400_000;
     const daily: { date: string; sold: number }[] = [];
     const recent = snaps.filter((s) => Date.parse(s.date) >= cutoff);
     for (let i = 1; i < recent.length; i++) {

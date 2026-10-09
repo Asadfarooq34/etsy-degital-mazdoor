@@ -97,9 +97,12 @@ export function registerToolRoutes(app: FastifyInstance, etsy: EtsyClient): void
     let keywordPeak: string | null = null;
     if (keyword.trim()) {
       try {
+        // Forward our own session cookie: /api/* requires auth, including
+        // for internal sub-requests.
         const res = await app.inject({
           method: "GET",
           url: `/api/trends?keyword=${encodeURIComponent(keyword.trim())}`,
+          headers: { cookie: req.headers.cookie ?? "" },
         });
         if (res.statusCode === 200) keywordPeak = res.json().peakMonth ?? null;
       } catch {
