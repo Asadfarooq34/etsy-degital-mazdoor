@@ -1,11 +1,20 @@
-/** Typed client for the local Digital Mazdoor API (http://127.0.0.1:3001). */
+/** Typed client for the Digital Mazdoor API (same-origin; see vite.config.ts proxy). */
 
-const BASE = "http://127.0.0.1:3001";
+const BASE = "";
 
 /** Extract a numeric listing ID from a raw ID or a full etsy.com/listing/… URL. */
 export function extractListingId(input: string): string {
   const m = input.match(/listing\/(\d+)/);
   return m ? m[1]! : input.trim();
+}
+
+/**
+ * Called when any API request returns 401 (session expired / signed out).
+ * App.tsx registers this to flip the UI back to the login gate.
+ */
+let unauthorizedHandler: (() => void) | null = null;
+export function setUnauthorizedHandler(fn: () => void): void {
+  unauthorizedHandler = fn;
 }
 
 async function req<T>(path: string, init?: RequestInit, timeoutMs = 90000): Promise<T> {
@@ -15,9 +24,16 @@ async function req<T>(path: string, init?: RequestInit, timeoutMs = 90000): Prom
   try {
     const res = await fetch(`${BASE}${path}`, {
       ...init,
+      // include: the auth session is an httpOnly cookie — it must be sent
+      // with every request for the API's auth gate to pass.
+      credentials: "include",
       headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
       signal: ctrl.signal,
     });
+    if (res.status === 401) {
+      unauthorizedHandler?.();
+      throw new Error("Not signed in — please log in again.");
+    }
     if (!res.ok) {
       const text = await res.text();
       throw new Error(text || `API error ${res.status}`);
@@ -36,7 +52,6 @@ async function req<T>(path: string, init?: RequestInit, timeoutMs = 90000): Prom
 export interface Health {
   ok: boolean;
   etsy: "live" | "fixture";
-  note: string;
 }
 
 export interface EstimatedValue {
@@ -346,6 +361,10 @@ export interface KeywordFull {
     cpcLow?: number | null;
     cpcHigh?: number | null;
   } | null;
+  /** Real Google Ads country shares; null when Ads not connected. */
+  googleCountries: { country: string; pct: number; searches: number }[] | null;
+  /** Real Google Ads 12-month monthly volumes; null when Ads not connected. */
+  googleHistory: { month: string; label: string; volume: number }[] | null;
 }
 
 export interface TopSeller {
@@ -494,8 +513,25 @@ export interface AiStatus {
   ready: boolean;
 }
 
+export interface AuthStatus {
+  authenticated: boolean;
+}
+
+export interface ContactResult {
+  ok: boolean;
+  /** Row id, or null when the message was silently discarded as spam. */
+  id: number | null;
+}
+
 export const api = {
   health: () => req<Health>("/health"),
+  authStatus: () => req<AuthStatus>("/api/auth/status"),
+  login: (password: string) =>
+    req<{ ok: boolean }>("/api/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ password }),
+    }),
+  logout: () => req<{ ok: boolean }>("/api/auth/logout", { method: "POST" }),
   keywordOverview: (keyword: string) =>
     req<KeywordOverview>(`/api/keywords/overview?keyword=${encodeURIComponent(keyword)}`),
   keywordFull: (keyword: string) =>
@@ -624,4 +660,6 @@ export const api = {
     offsiteAds: boolean;
     annualSalesUsd: number;
   }) => req<FeeResult>("/api/tools/fee-calculator", { method: "POST", body: JSON.stringify(input) }),
+  contactSend: (input: { name: string; email: string; subject: string; message: string; website?: string }) =>
+    req<ContactResult>("/api/contact", { method: "POST", body: JSON.stringify(input) }),
 };

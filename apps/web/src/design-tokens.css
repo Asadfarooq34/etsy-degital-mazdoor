@@ -1,0 +1,98 @@
+/* ============================================================
+   Digital Mazdoor — Design Tokens
+   Single source of truth for color, type, spacing, radius, shadow.
+   All custom properties are prefixed `--dm-`. Existing legacy
+   `--purple-*` / `--ink-*` vars in index.css are kept for
+   backwards compatibility and now alias these tokens.
+   ============================================================ */
+
+:root {
+  /* ---------- Brand: purple scale ---------- */
+  --dm-purple-50: #f5f3ff;
+  --dm-purple-100: #ede9fe;
+  --dm-purple-200: #ddd6fe;
+  --dm-purple-300: #c4b5fd;
+  --dm-purple-400: #a78bfa;
+  --dm-purple-500: #8b5cf6;
+  --dm-purple-600: #7c3aed;
+  --dm-purple-700: #6d28d9;
+  --dm-purple-800: #5b21b6;
+  --dm-purple-900: #4c1d95;
+
+  /* ---------- Semantic: success ---------- */
+  --dm-success-600: #16a34a;
+  --dm-success-700: #15803d;
+  --dm-success-bg: #dcfce7;
+  --dm-success-text: #166534;
+
+  /* ---------- Semantic: warning ---------- */
+  --dm-warning-600: #d97706;
+  --dm-warning-700: #b45309;
+  --dm-warning-bg: #fef3c7;
+  --dm-warning-text: #92400e;
+
+  /* ---------- Semantic: danger ---------- */
+  --dm-danger-600: #dc2626;
+  --dm-danger-700: #b91c1c;
+  --dm-danger-bg: #fee2e2;
+  --dm-danger-text: #991b1b;
+
+  /* ---------- Semantic: info ---------- */
+  --dm-info-600: #2563eb;
+  --dm-info-700: #1d4ed8;
+  --dm-info-bg: #dbeafe;
+  --dm-info-text: #1e40af;
+
+  /* ---------- Neutrals ---------- */
+  --dm-ink-900: #1e1b2e;
+  --dm-ink-600: #55516b;
+  --dm-ink-400: #8a86a0;
+  --dm-bg: #faf9fd;
+  --dm-card: #ffffff;
+  --dm-border: #e9e6f5;
+
+  /* ---------- Typography scale ---------- */
+  --dm-text-display: 28px;
+  --dm-text-h1: 22px;
+  --dm-text-h2: 18px;
+  --dm-text-h3: 16px;
+  --dm-text-body: 14px;
+  --dm-text-small: 13px;
+  --dm-text-caption: 12px;
+  --dm-font: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --dm-weight-regular: 400;
+  --dm-weight-medium: 500;
+  --dm-weight-semibold: 600;
+  --dm-weight-bold: 700;
+  --dm-weight-extrabold: 800;
+  --dm-line-tight: 1.25;
+  --dm-line-normal: 1.5;
+
+  /* ---------- Spacing (4px base) ---------- */
+  --dm-space-1: 4px;
+  --dm-space-2: 8px;
+  --dm-space-3: 12px;
+  --dm-space-4: 16px;
+  --dm-space-6: 24px;
+  --dm-space-8: 32px;
+  --dm-space-12: 48px;
+
+  /* ---------- Radius ---------- */
+  --dm-radius-sm: 6px;
+  --dm-radius-md: 10px;
+  --dm-radius-lg: 14px;
+  --dm-radius-pill: 999px;
+
+  /* ---------- Shadows ---------- */
+  --dm-shadow-card: 0 1px 2px rgba(30, 27, 46, 0.06);
+  --dm-shadow-lift: 0 8px 24px rgba(30, 27, 46, 0.1);
+  --dm-shadow-modal: 0 24px 64px rgba(30, 27, 46, 0.22);
+
+  /* ---------- Motion ---------- */
+  --dm-transition-fast: 0.12s ease;
+  --dm-transition-normal: 0.2s ease;
+
+  /* ---------- Z-index ---------- */
+  --dm-z-tooltip: 100;
+  --dm-z-modal: 200;
+}
