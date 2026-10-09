@@ -143,6 +143,12 @@ const AUTH_EXEMPT = new Set([
   "/api/auth/login",
   "/api/auth/status",
   "/api/auth/logout",
+  // POST /api/contact is the public contact page's inbox — visitors aren't
+  // signed in, so it must stay public. Spam protection: honeypot + link-spam
+  // heuristic (contact.ts) + strict input validation + 5/hr/IP rate limit
+  // (httpRateLimit.ts). Never stores secrets; messages land in the local
+  // SQLite inbox only.
+  "/api/contact",
 ]);
 
 /** Paths that stay public by design: monitoring + the login endpoints. */

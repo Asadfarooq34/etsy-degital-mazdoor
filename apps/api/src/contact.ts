@@ -1,10 +1,14 @@
 /**
  * POST /api/contact — contact-form inbox (Phase 3A).
  *
- * Behind the existing auth gate like every other /api/* route: the web UI
- * is login-gated, so this is the admin's own inbox, not a public endpoint.
+ * Intentionally PUBLIC (auth.ts AUTH_EXEMPT): the /contact page is a public
+ * marketing page and visitors aren't signed in. A gated endpoint would make
+ * the public form a dead button — every submission would 401.
  *
- * Anti-spam: a honeypot field ("website") plus a simple URL-count heuristic.
+ * Anti-spam layers:
+ *  1. honeypot field ("website") plus a simple URL-count heuristic;
+ *  2. strict input validation (validate.ts);
+ *  3. 5 submissions/hour/IP rate limit (httpRateLimit.ts).
  * Spam is NOT stored and gets a fake success response so bots can't tell
  * they were filtered.
  *

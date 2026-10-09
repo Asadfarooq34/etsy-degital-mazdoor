@@ -308,7 +308,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "What does it cost?",
-    a: "[NEEDS USER INPUT: pricing plans] — Digital Mazdoor is free to use while it is in private beta. Pricing plans will be announced here before any paid tier launches.",
+    a: "Digital Mazdoor is free to use while it is in private beta. Pricing plans will be announced here before any paid tier launches.",
   },
   {
     q: "How is this different from other keyword tools?",
@@ -571,7 +571,7 @@ export default function Homepage() {
           <a href="/login" className="hp-btn hp-btn-primary hp-btn-lg">
             Get Started
           </a>
-          <p className="hp-note">[NEEDS USER INPUT: pricing plans] · Free during private beta</p>
+          <p className="hp-note">Free during private beta</p>
         </section>
       </div>
 

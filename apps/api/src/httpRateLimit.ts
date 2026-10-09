@@ -52,6 +52,8 @@ export interface HttpLimiters {
   ai: TokenBucket;
   /** /api/alerts/check + /api/shops/snapshot-all — 5 / hour / session (quota). */
   quota: TokenBucket;
+  /** POST /api/contact — 5 / hour / IP (public form, spam shield). */
+  contact: TokenBucket;
 }
 
 export function createHttpLimiters(): HttpLimiters {
@@ -59,6 +61,7 @@ export function createHttpLimiters(): HttpLimiters {
     login: new TokenBucket(10, 15 * 60 * 1000),
     ai: new TokenBucket(30, 60 * 1000),
     quota: new TokenBucket(5, 60 * 60 * 1000),
+    contact: new TokenBucket(5, 60 * 60 * 1000),
   };
 }
 
@@ -86,6 +89,17 @@ export function httpRateLimitHook(limiters: HttpLimiters) {
       const rl = limiters.ai.take(`ai:${sessionKey}`);
       if (!rl.allowed) {
         tooManyRequests(reply, rl.retryAfterMs, "AI rate limit: 30 requests/min — slow down.");
+        return;
+      }
+      return;
+    }
+    if (req.method === "POST" && path === "/api/contact") {
+      // Public contact form: key by IP when there's no session (the auth hook
+      // lets this path through), by session when signed in. 5/hr is enough
+      // for humans; bots hit the wall fast.
+      const rl = limiters.contact.take(`contact:${sessionKey}`);
+      if (!rl.allowed) {
+        tooManyRequests(reply, rl.retryAfterMs, "Contact limit: 5 messages/hour — please try again later.");
         return;
       }
       return;

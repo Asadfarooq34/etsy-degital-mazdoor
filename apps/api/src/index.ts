@@ -6,6 +6,8 @@ import dotenv from "dotenv";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import path from "node:path";
 import Fastify from "fastify";
+import fastifyStatic from "@fastify/static";
+import { existsSync } from "node:fs";
 // Load .env from the api package dir AND the repo root (npm runs from root,
 // so a bare `import "dotenv/config"` would miss apps/api/.env).
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -158,6 +160,26 @@ export function buildServer(): ReturnType<typeof Fastify> {
   app.post("/api/tools/fee-calculator", async (req) => {
     return calculateFees(validateFeeInput(req.body));
   });
+
+  // Production SPA serving (Option A: single-VM deploy — DEPLOY.md).
+  // When the built web bundle exists (apps/web/dist), serve it from the same
+  // origin as the API so the SameSite=Strict session cookie always attaches.
+  // In dev (tsx, no dist yet) this block is skipped — the Vite dev server
+  // serves the UI and proxies /api/* + /health to this API.
+  const webDist = path.join(here, "..", "..", "web", "dist");
+  if (existsSync(webDist)) {
+    app.register(fastifyStatic, { root: webDist, index: ["index.html"] });
+    // SPA fallback: deep links and refreshes on /login, /dashboard/*,
+    // /privacy, /terms, /contact, etc. all get index.html so the client
+    // router renders them. /api/* and /health keep JSON 404s.
+    app.setNotFoundHandler((req, reply) => {
+      const url = req.raw.url ?? "/";
+      if (req.method === "GET" && !url.startsWith("/api") && url !== "/health") {
+        return reply.sendFile("index.html");
+      }
+      void reply.code(404).send({ statusCode: 404, error: "Not Found", message: "Not Found" });
+    });
+  }
 
   return app;
 }

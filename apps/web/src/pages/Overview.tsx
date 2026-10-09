@@ -51,7 +51,7 @@ export default function Overview({
         </div>
         <div className="stat">
           <div className="stat-label">Research modules</div>
-          <div className="stat-value">20</div>
+          <div className="stat-value">30</div>
           <div className="stat-note">keywords → sales → tools</div>
         </div>
         <div className="stat">

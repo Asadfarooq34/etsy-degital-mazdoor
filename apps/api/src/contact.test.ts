@@ -54,35 +54,37 @@ describe("POST /api/contact validation + storage", () => {
   });
 
   it("returns 400 (not 500) for missing/invalid fields", async () => {
-    const { app, headers } = await authed();
-    try {
-      const bad = [
-        {}, // everything missing
-        { ...good, name: "" }, // empty name
-        { ...good, name: "   " }, // whitespace-only name
-        { ...good, email: "not-an-email" }, // invalid email
-        { ...good, email: "missing@tld" }, // invalid email
-        { ...good, subject: "" }, // empty subject
-        { ...good, message: "" }, // empty message
-        { ...good, name: "x".repeat(101) }, // name too long
-        { ...good, subject: "x".repeat(201) }, // subject too long
-        { ...good, message: "x".repeat(5001) }, // message too long
-        { ...good, email: 123 }, // wrong type
-        { name: null, email: null, subject: null, message: null }, // nulls
-      ];
-      for (const payload of bad) {
+    // NOTE: POST /api/contact is rate-limited at 5/hr/IP (spam shield), so
+    // each invalid payload gets a fresh server (fresh bucket). The endpoint
+    // is public, so no session is needed.
+    const bad = [
+      {}, // everything missing
+      { ...good, name: "" }, // empty name
+      { ...good, name: "   " }, // whitespace-only name
+      { ...good, email: "not-an-email" }, // invalid email
+      { ...good, email: "missing@tld" }, // invalid email
+      { ...good, subject: "" }, // empty subject
+      { ...good, message: "" }, // empty message
+      { ...good, name: "x".repeat(101) }, // name too long
+      { ...good, subject: "x".repeat(201) }, // subject too long
+      { ...good, message: "x".repeat(5001) }, // message too long
+      { ...good, email: 123 }, // wrong type
+      { name: null, email: null, subject: null, message: null }, // nulls
+    ];
+    for (const payload of bad) {
+      const app = buildServer();
+      try {
         const res = await app.inject({
           method: "POST",
           url: "/api/contact",
-          headers,
           payload,
         });
         expect(res.statusCode).toBe(400);
+      } finally {
+        await app.close();
       }
-      expect(messageCount()).toBe(0);
-    } finally {
-      await app.close();
     }
+    expect(messageCount()).toBe(0);
   });
 
   it("silently discards honeypot spam (200, id null, nothing stored)", async () => {
@@ -123,7 +125,7 @@ describe("POST /api/contact validation + storage", () => {
     }
   });
 
-  it("rejects unauthenticated requests with 401", async () => {
+  it("accepts unauthenticated requests (public contact page, by design)", async () => {
     const app = buildServer();
     try {
       const res = await app.inject({
@@ -131,8 +133,35 @@ describe("POST /api/contact validation + storage", () => {
         url: "/api/contact",
         payload: good,
       });
-      expect(res.statusCode).toBe(401);
-      expect(messageCount()).toBe(0);
+      expect(res.statusCode).toBe(201);
+      const body = res.json() as { ok: boolean; id: number | null };
+      expect(body.ok).toBe(true);
+      expect(body.id).toBeGreaterThan(0);
+      expect(messageCount()).toBe(1);
+    } finally {
+      await app.close();
+    }
+  });
+
+  it("rate-limits unauthenticated contact spam: 6th message in an hour → 429", async () => {
+    const app = buildServer();
+    try {
+      for (let i = 0; i < 5; i++) {
+        const res = await app.inject({
+          method: "POST",
+          url: "/api/contact",
+          payload: { ...good, email: `user${i}@example.com` },
+        });
+        expect(res.statusCode).toBe(201);
+      }
+      const res = await app.inject({
+        method: "POST",
+        url: "/api/contact",
+        payload: { ...good, email: "user5@example.com" },
+      });
+      expect(res.statusCode).toBe(429);
+      expect(res.headers["retry-after"]).toBeDefined();
+      expect(messageCount()).toBe(5);
     } finally {
       await app.close();
     }
