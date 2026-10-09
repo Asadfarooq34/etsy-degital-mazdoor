@@ -1,0 +1,4 @@
+# SPA fallback: every route is served index.html so the client-side router
+# (src/router.tsx) can render /login, /dashboard/*, /privacy, etc. on deep
+# links and refreshes. Used by Cloudflare Pages, Netlify, and similar hosts.
+/*    /index.html   200
