@@ -158,9 +158,10 @@ export default function Contact({ go }: { go: (page: "privacy" | "terms") => voi
 
       <Card title="Your privacy" className="contact-privacy">
         <p className="stat-note" style={{ margin: 0 }}>
-          Submitting this form stores your name, email, subject, and message on the
-          service&rsquo;s server so the operator can respond — it is never sold or shared
-          with third parties. Read the full{" "}
+          When you submit this form, your name, email address, subject, and message are
+          stored on our server so we can respond. We do not sell your personal
+          information. Service providers may process technical or other information as
+          necessary to operate and secure the service, as described in our{" "}
           <button type="button" className="link-btn" onClick={() => go("privacy")}>
             Privacy Policy
           </button>{" "}

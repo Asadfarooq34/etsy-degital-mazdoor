@@ -1,0 +1,30 @@
+From 1220de71d7b28b0d480b333be454b4ef79b1d90b Mon Sep 17 00:00:00 2001
+From: Asad <asad@local>
+Date: Sat, 10 Oct 2026 03:56:18 +0500
+Subject: [PATCH] web: clarify contact form data-sharing disclosure
+
+---
+ apps/web/src/pages/Contact.tsx | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
+
+diff --git a/apps/web/src/pages/Contact.tsx b/apps/web/src/pages/Contact.tsx
+index 83147bb..92e3b70 100644
+--- a/apps/web/src/pages/Contact.tsx
++++ b/apps/web/src/pages/Contact.tsx
+@@ -158,9 +158,10 @@ export default function Contact({ go }: { go: (page: "privacy" | "terms") => voi
+ 
+       <Card title="Your privacy" className="contact-privacy">
+         <p className="stat-note" style={{ margin: 0 }}>
+-          Submitting this form stores your name, email, subject, and message on the
+-          service&rsquo;s server so the operator can respond — it is never sold or shared
+-          with third parties. Read the full{" "}
++          When you submit this form, your name, email address, subject, and message are
++          stored on our server so we can respond. We do not sell your personal
++          information. Service providers may process technical or other information as
++          necessary to operate and secure the service, as described in our{" "}
+           <button type="button" className="link-btn" onClick={() => go("privacy")}>
+             Privacy Policy
+           </button>{" "}
+-- 
+2.43.0
+
