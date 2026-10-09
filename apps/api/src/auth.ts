@@ -87,25 +87,50 @@ export function parseSessionToken(req: FastifyRequest): string | null {
   return null;
 }
 
+/**
+ * COOKIE_DOMAIN: optional cookie Domain attribute for cross-subdomain
+ * sessions, e.g. ".yourdomain.com" so that app.yourdomain.com and
+ * yourdomain.com share the login session. When unset (localhost dev) no
+ * Domain attribute is emitted — browsers reject Domain=localhost, and the
+ * default (host-only) cookie is exactly right for local development.
+ */
+function cookieDomain(): string | null {
+  const d = (process.env["COOKIE_DOMAIN"] ?? "").trim();
+  return d === "" ? null : d;
+}
+
+function domainAttr(): string {
+  const d = cookieDomain();
+  return d ? `; Domain=${d}` : "";
+}
+
 function sessionCookieHeader(token: string, secure: boolean): string {
   // SameSite=Strict: the cookie is only ever sent back to this API's own
   // origin. The web UI must therefore be served same-origin (or proxied —
   // see apps/web/vite.config.ts), otherwise the browser won't attach it.
   return (
     `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict` +
+    domainAttr() +
     (secure ? "; Secure" : "") +
     `; Max-Age=${SESSION_TTL_MS / 1000}`
   );
 }
 
 function clearSessionCookieHeader(secure: boolean): string {
+  // The clear must carry the same Domain as the set, otherwise the browser
+  // treats it as a different cookie and the session survives logout.
   return (
     `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Strict` +
+    domainAttr() +
     (secure ? "; Secure" : "") +
     "; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
   );
 }
 
+/**
+ * Secure flag: production only. Localhost dev runs over plain http, and a
+ * Secure cookie would never be sent back — login would silently break.
+ */
 function isSecure(): boolean {
   return process.env["NODE_ENV"] === "production";
 }

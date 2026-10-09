@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { api, type KeywordFull } from "../api";
 import {
   ErrorState,
@@ -126,8 +126,8 @@ function kdBadge(kd: number) {
   );
 }
 
-export default function Keywords() {
-  const [keyword, setKeyword] = useState("");
+export default function Keywords({ initialQuery = "" }: { initialQuery?: string }) {
+  const [keyword, setKeyword] = useState(initialQuery);
   const [result, setResult] = useState<KeywordFull | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -136,12 +136,13 @@ export default function Keywords() {
   const [aiError, setAiError] = useState("");
   const [trendsLoading, setTrendsLoading] = useState(false);
 
-  const analyze = async () => {
-    if (!keyword.trim()) return;
+  const analyze = async (override?: string) => {
+    const q = (override ?? keyword).trim();
+    if (!q) return;
     setLoading(true);
     setError("");
     try {
-      setResult(await api.keywordFull(keyword.trim()));
+      setResult(await api.keywordFull(q));
     } catch (e) {
       setError(e instanceof Error ? e.message : "failed");
       setResult(null);
@@ -149,6 +150,17 @@ export default function Keywords() {
       setLoading(false);
     }
   };
+
+  // Seed from the dashboard top-bar global search (?q=…). App.tsx remounts
+  // this component (via key) whenever ?q= changes, so a mount-only effect
+  // is enough — no stale-closure juggling on later keystrokes.
+  useEffect(() => {
+    if (initialQuery.trim()) {
+      setKeyword(initialQuery);
+      void analyze(initialQuery);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // L11: retry ONLY the trends fetch (cheap /api/trends call) instead of the
   // full expensive analysis. Merges the fresh trends into the existing result.

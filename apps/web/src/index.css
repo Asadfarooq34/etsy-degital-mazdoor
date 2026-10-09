@@ -1450,3 +1450,327 @@ body {
 .link-btn:hover {
   color: var(--dm-purple-800, #5b21b6);
 }
+
+/* ---------- Phase 3E: public shell, top bar, breadcrumbs, collapsible sidebar ---------- */
+
+.public-wrap {
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: var(--bg);
+}
+
+.public-inner {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 32px 24px 72px;
+}
+
+.public-back {
+  display: inline-block;
+  margin-bottom: 20px;
+  color: var(--purple-600);
+  text-decoration: none;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.public-back:hover {
+  text-decoration: underline;
+}
+
+.login-beta {
+  margin: -8px 0 18px;
+  font-size: 12px;
+  color: var(--ink-400);
+}
+
+/* Slim top bar inside the dashboard layout. */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 2px 0 14px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.topbar-title {
+  font-size: 18px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.topbar-search {
+  margin-left: auto;
+  display: flex;
+}
+
+.topbar-search-input {
+  width: 240px;
+}
+
+.topbar-bell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-size: 17px;
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.topbar-bell:hover {
+  border-color: var(--purple-500);
+}
+
+.topbar-badge {
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 10px;
+  background: #dc2626;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.account-menu {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.account-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px 5px 5px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink-900);
+  cursor: pointer;
+}
+
+.account-btn:hover {
+  border-color: var(--purple-500);
+}
+
+.account-avatar {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--purple-500), var(--purple-700));
+  color: #fff;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.account-caret {
+  font-size: 10px;
+  color: var(--ink-400);
+}
+
+.account-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+}
+
+.account-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  z-index: 71;
+  min-width: 210px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(30, 27, 46, 0.14);
+  padding: 8px;
+}
+
+.account-dropdown-head {
+  padding: 8px 10px 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+
+.account-dropdown-name {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.account-dropdown-sub {
+  font-size: 12px;
+  color: var(--ink-400);
+}
+
+.account-signout {
+  width: 100%;
+  text-align: left;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  font-family: var(--font);
+  font-size: 13.5px;
+  font-weight: 500;
+  color: var(--ink-900);
+  cursor: pointer;
+}
+
+.account-signout:hover {
+  background: var(--purple-50);
+}
+
+/* Breadcrumbs: Dashboard / Section / Page. */
+.breadcrumbs {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-400);
+  margin-bottom: 18px;
+}
+
+.breadcrumbs a {
+  color: var(--purple-600);
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.breadcrumbs a:hover {
+  text-decoration: underline;
+}
+
+.crumb-sep {
+  opacity: 0.45;
+}
+
+.breadcrumbs [aria-current="page"] {
+  color: var(--ink-900);
+  font-weight: 600;
+}
+
+/* Sidebar collapse toggle (desktop only). */
+.collapse-btn {
+  margin-left: auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #b9b4d4;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  font-family: var(--font);
+}
+
+.collapse-btn:hover {
+  background: rgba(139, 92, 246, 0.25);
+  color: #fff;
+}
+
+/* Collapsed (icons-only) sidebar — desktop only; mobile keeps the overlay nav. */
+@media (min-width: 901px) {
+  .sidebar.collapsed {
+    width: 76px;
+    padding: 20px 10px;
+  }
+
+  .sidebar.collapsed .brand {
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    padding: 6px 0 16px;
+  }
+
+  .sidebar.collapsed .collapse-btn {
+    margin: 10px auto 0;
+  }
+
+  .sidebar.collapsed .brand-text,
+  .sidebar.collapsed .nav-section,
+  .sidebar.collapsed .nav-label,
+  .sidebar.collapsed .nav-badge,
+  .sidebar.collapsed .nav-soon,
+  .sidebar.collapsed .foot-version {
+    display: none;
+  }
+
+  .sidebar.collapsed .nav-item {
+    justify-content: center;
+    padding: 10px 0;
+  }
+
+  .sidebar.collapsed .sidebar-foot {
+    align-items: center;
+  }
+
+  .sidebar.collapsed .api-status {
+    font-size: 0;
+    gap: 0;
+    justify-content: center;
+  }
+
+  .sidebar.collapsed .foot-signout {
+    align-self: center;
+    font-size: 11px;
+  }
+
+  .app.sidebar-collapsed .main {
+    margin-left: 76px;
+  }
+}
+
+.collapse-btn:focus-visible,
+.account-btn:focus-visible,
+.account-signout:focus-visible,
+.topbar-bell:focus-visible {
+  outline: 2px solid var(--purple-500);
+  outline-offset: 2px;
+}
+
+@media (max-width: 900px) {
+  .collapse-btn {
+    display: none;
+  }
+  .topbar {
+    flex-wrap: wrap;
+  }
+  .topbar-search {
+    order: 5;
+    flex-basis: 100%;
+    margin-left: 0;
+  }
+  .topbar-search-input {
+    width: 100%;
+  }
+  .account-name {
+    display: none;
+  }
+  .account-btn {
+    padding-right: 5px;
+  }
+}
