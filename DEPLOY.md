@@ -1,8 +1,9 @@
 # DEPLOY.md — Digital Mazdur production deploy guide
 
-> v1 target: one small VM, public domain (domain not purchased yet — see
-> "Blocked until domain purchase" at the bottom). Nothing here costs anything
-> beyond the VM + domain.
+> v1 target: split deployment — Cloudflare Pages (frontend) + Oracle Cloud
+> Always Free VM (API). Domain purchased: `digitalmazdur.online` (2026-10-09).
+> Code support for split mode landed 2026-10-09 (`FRONTEND_URL`,
+> `COOKIE_SAMESITE`, `VITE_API_URL`).
 
 ## 1. Hosting architecture
 
@@ -11,8 +12,8 @@
 
 | Option | Shape | Verdict |
 |---|---|---|
-| **A — Single VM (recommended for v1)** | One process: Fastify serves `/api/*`, `/health`, **and** the built Vite `dist/` (static + SPA fallback, verified — §5). SQLite lives on the VM disk. Cloudflare = DNS + proxy + TLS only. | Simplest. One deploy, one rollback, no CORS config, cookie stays SameSite=Strict. |
-| B — Pages frontend + VM API | Cloudflare Pages serves `dist/`; VM serves API only. Needs `VITE_API_URL=https://api.yourdomain.com` baked in at build time, CORS origin-scoped (current code sends `Access-Control-Allow-Origin: *` — must be tightened), and the session cookie **cannot stay SameSite=Strict** (cross-site fetch won't carry it) → requires a code change to Lax + `Access-Control-Allow-Credentials`. | More moving parts, weaker cookie. Only if Asad wants it. |
+| **A — Single VM** | One process: Fastify serves `/api/*`, `/health`, **and** the built Vite `dist/` (static + SPA fallback, verified — §5). SQLite lives on the VM disk. Cloudflare = DNS + proxy + TLS only. | Simplest. One deploy, one rollback, no CORS config, cookie stays SameSite=Strict. Kept as fallback. |
+| **B — Pages frontend + VM API (ASAD'S CHOICE, 2026-10-09)** | Cloudflare Pages serves `dist/` (free); Oracle Always Free VM serves API only (`api.digitalmazdur.online`). `VITE_API_URL` baked in at build time; CORS origin-scoped via `FRONTEND_URL` + `Access-Control-Allow-Credentials`; session cookie `SameSite=Lax` via `COOKIE_SAMESITE`. Full procedure: §8b. | $0 cost. More moving parts — all three env settings required together (see §8b "Why these settings"). |
 
 ## 2. DNS / HTTPS checklist
 
@@ -100,6 +101,83 @@ npm run build && sudo systemctl restart digital-mazdoor
 #                 cp /backups/dm-<date>.db data/digital-mazdoor.db
 #                 sudo systemctl start digital-mazdoor
 ```
+
+## 8b. Deploy procedure — Option B: split (Cloudflare Pages frontend + Oracle VM API)
+
+> Asad's choice (2026-10-09): frontend static on Cloudflare Pages (free),
+> backend API on Oracle Cloud Always Free VM. Code support for this landed in
+> `feat: split-deployment support` (FRONTEND_URL, COOKIE_SAMESITE, VITE_API_URL).
+
+**Architecture:**
+
+```
+digitalmazdur.online            → Cloudflare Pages (static SPA build)
+api.digitalmazdur.online        → Oracle VM:3001 (Fastify API, SQLite on disk)
+```
+
+**Step 1 — Oracle VM setup (one-time):**
+
+```bash
+# On the Oracle Always Free VM (Ubuntu):
+# 1. Install Node ≥22.5, git
+# 2. Clone and install
+git clone https://github.com/Asadfarooq34/etsy-degital-mazdoor.git /opt/dm
+cd /opt/dm && npm ci --workspace=@digital-mazdoor/api --workspace=@digital-mazdoor/core
+# 3. Create /opt/dm/apps/api/.env (NEVER commit):
+#    ADMIN_PASSWORD=<strong-random-password>   # REQUIRED
+#    NODE_ENV=production                        # REQUIRED (Secure cookie flag)
+#    PORT=3001
+#    FRONTEND_URL=https://digitalmazdur.online # REQUIRED for split
+#    COOKIE_SAMESITE=Lax                        # REQUIRED for split
+#    # COOKIE_DOMAIN not needed for split (API is on api. subdomain alone)
+#    # Etsy/Gemini keys: optional, same as Option A
+# 4. Build + run (systemd unit in §8, adapted: no web dist needed on the VM,
+#    but harmless if present — the API skips SPA serving when dist/ is absent)
+npm run build --workspace=@digital-mazdoor/api
+# 5. Open firewall: allow TCP 3001 from Cloudflare IPs only (or put Caddy/Nginx
+#    in front for TLS → then Cloudflare SSL mode "Full (strict)")
+```
+
+**Step 2 — Frontend build with API URL (every deploy):**
+
+```bash
+# VITE_API_URL is baked in at BUILD time — it cannot change at runtime.
+VITE_API_URL=https://api.digitalmazdur.online npm run build --workspace=@digital-mazdoor/web
+# Push to GitHub; Cloudflare Pages rebuilds from main automatically.
+```
+
+Cloudflare Pages project settings (dashboard → Workers & Pages):
+- Build command: `VITE_API_URL=https://api.digitalmazdur.online npm run build --workspace=@digital-mazdoor/web`
+- Build output directory: `apps/web/dist`
+- Environment variable (or inline as above): `NODE_VERSION=22`
+
+**Step 3 — DNS (Cloudflare dashboard):**
+
+| Record | Type | Target | Proxy |
+|---|---|---|---|
+| `digitalmazdur.online` | CNAME | `<pages-project>.pages.dev` | ✅ Proxied |
+| `api` | A | `<oracle-vm-public-ip>` | ✅ Proxied (or DNS-only + own TLS) |
+
+**Step 4 — Verify split auth (after deploy):**
+
+1. Open `https://digitalmazdur.online/login` → log in.
+2. DevTools → Application → Cookies: expect
+   `dm_session=…; HttpOnly; SameSite=Lax; Secure` on `api.digitalmazdur.online`.
+3. `GET https://api.digitalmazdur.online/api/auth/status` → `{"authenticated":true}`
+   (proves the browser sent the cookie cross-origin).
+4. Dashboard loads data (proves CORS `FRONTEND_URL` + credentials work).
+5. Logout → `/api/auth/status` → 401, cookie cleared.
+
+**Why these settings (do not "simplify"):**
+- `FRONTEND_URL` without `COOKIE_SAMESITE=Lax` → CORS passes but the
+  browser drops the Strict cookie on cross-origin fetch → login loops.
+- `COOKIE_SAMESITE=Lax` without `FRONTEND_URL` → cookie attaches but the
+  browser blocks the response (CORS) → API calls fail.
+- Both without `NODE_ENV=production` → no `Secure` flag → browsers reject
+  `SameSite=Lax` cookies without `Secure` over HTTPS → login fails silently.
+  All three are required together.
+
+---
 
 ## 9. Baseline measurements (production build, 2026-10-09)
 

@@ -5,13 +5,16 @@
  *
  * - Dev (default): "" — relative URLs, served through the Vite dev proxy
  *   (vite.config.ts forwards /api/* and /health to http://127.0.0.1:3001).
- *   Relative is deliberate: the session cookie is SameSite=Strict, so the
- *   web UI must talk to the API same-origin for the cookie to be attached.
- * - Production: set VITE_API_URL to the API's public origin before building,
- *   e.g. `VITE_API_URL=https://api.yourdomain.com npm run build`.
- *   Prefer serving the SPA and the API from the same origin (or behind one
- *   reverse proxy that unifies them) — a truly cross-origin API breaks the
- *   Strict session cookie and login will silently fail.
+ *   Relative is deliberate for local dev: the session cookie defaults to
+ *   SameSite=Strict, so the web UI must talk to the API same-origin for the
+ *   cookie to be attached.
+ * - Single-VM production: "" — the API serves the built SPA itself
+ *   (same-origin, Strict cookie works).
+ * - Split production (frontend on Cloudflare Pages, API on its own host):
+ *   set VITE_API_URL to the API's public origin at BUILD time, e.g.
+ *   `VITE_API_URL=https://api.digitalmazdur.online npm run build`.
+ *   The API must then be configured with FRONTEND_URL (CORS origin +
+ *   credentials) and COOKIE_SAMESITE=Lax — see DEPLOY.md "Option B".
  */
 const BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
 

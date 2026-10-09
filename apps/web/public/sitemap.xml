@@ -1,30 +1,30 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- TODO: replace yourdomain.com with the real domain after purchase.
+<!-- Domain set: digitalmazdur.online (purchased 2026-10-09).
      Only public routes are listed: /dashboard/* is behind the login gate
      and excluded from indexing (see robots.txt). -->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://yourdomain.com/</loc>
+    <loc>https://digitalmazdur.online/</loc>
     <changefreq>weekly</changefreq>
     <priority>1.0</priority>
   </url>
   <url>
-    <loc>https://yourdomain.com/login</loc>
+    <loc>https://digitalmazdur.online/login</loc>
     <changefreq>yearly</changefreq>
     <priority>0.4</priority>
   </url>
   <url>
-    <loc>https://yourdomain.com/contact</loc>
+    <loc>https://digitalmazdur.online/contact</loc>
     <changefreq>yearly</changefreq>
     <priority>0.5</priority>
   </url>
   <url>
-    <loc>https://yourdomain.com/privacy</loc>
+    <loc>https://digitalmazdur.online/privacy</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>
   <url>
-    <loc>https://yourdomain.com/terms</loc>
+    <loc>https://digitalmazdur.online/terms</loc>
     <changefreq>yearly</changefreq>
     <priority>0.3</priority>
   </url>

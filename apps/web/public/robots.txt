@@ -3,5 +3,4 @@ Allow: /
 Disallow: /dashboard/
 Disallow: /api/
 
-Sitemap: https://yourdomain.com/sitemap.xml
-# TODO: replace yourdomain.com with the real domain after purchase
+Sitemap: https://digitalmazdur.online/sitemap.xml

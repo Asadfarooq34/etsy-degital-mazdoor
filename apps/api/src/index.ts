@@ -73,10 +73,23 @@ export function buildServer(): ReturnType<typeof Fastify> {
   process.on("unhandledRejection", (reason) => {
     app.log.error({ reason }, "[fatal] unhandled rejection — server stays up");
   });
-  // The local web UI runs on a different origin (localhost:5173 vs 127.0.0.1:3001).
-  // This server binds to 127.0.0.1 only, so permissive CORS is safe here.
+  // CORS.
+  // - Local dev / single-VM (default): the web UI runs on a different origin
+  //   (localhost:5173 vs 127.0.0.1:3001) but the server binds to 127.0.0.1
+  //   only, so permissive CORS is safe here.
+  // - Split deployment (frontend on Cloudflare Pages, API on its own host):
+  //   set FRONTEND_URL to the frontend's public origin
+  //   (e.g. https://digitalmazdur.online). The API then allows ONLY that
+  //   origin and sends Access-Control-Allow-Credentials so the session
+  //   cookie works cross-origin (requires COOKIE_SAMESITE=Lax, see auth.ts).
+  const frontendUrl = (process.env["FRONTEND_URL"] ?? "").trim().replace(/\/+$/, "");
   app.addHook("onRequest", async (request, reply) => {
-    reply.header("Access-Control-Allow-Origin", "*");
+    if (frontendUrl) {
+      reply.header("Access-Control-Allow-Origin", frontendUrl);
+      reply.header("Access-Control-Allow-Credentials", "true");
+    } else {
+      reply.header("Access-Control-Allow-Origin", "*");
+    }
     reply.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     reply.header("Access-Control-Allow-Headers", "Content-Type");
     if (request.method === "OPTIONS") {

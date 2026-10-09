@@ -104,12 +104,26 @@ function domainAttr(): string {
   return d ? `; Domain=${d}` : "";
 }
 
+/**
+ * COOKIE_SAMESITE: "Strict" (default) or "Lax".
+ * - Strict: cookie only sent back to the API's own origin. The web UI must
+ *   be served same-origin (single-VM deploy, or Vite dev proxy).
+ * - Lax: required for SPLIT deployment (frontend on Cloudflare Pages, API on
+ *   its own host, e.g. api.digitalmazdur.online). The browser then still
+ *   sends the cookie on top-level navigations and on fetch() with
+ *   credentials:"include" (which the frontend already uses). Must be paired
+ *   with FRONTEND_URL so CORS allows the frontend origin with credentials.
+ * Any other/empty value falls back to Strict.
+ */
+function cookieSameSite(): "Strict" | "Lax" {
+  return (process.env["COOKIE_SAMESITE"] ?? "").trim().toLowerCase() === "lax"
+    ? "Lax"
+    : "Strict";
+}
+
 function sessionCookieHeader(token: string, secure: boolean): string {
-  // SameSite=Strict: the cookie is only ever sent back to this API's own
-  // origin. The web UI must therefore be served same-origin (or proxied —
-  // see apps/web/vite.config.ts), otherwise the browser won't attach it.
   return (
-    `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=Strict` +
+    `${SESSION_COOKIE}=${token}; Path=/; HttpOnly; SameSite=${cookieSameSite()}` +
     domainAttr() +
     (secure ? "; Secure" : "") +
     `; Max-Age=${SESSION_TTL_MS / 1000}`
@@ -117,10 +131,10 @@ function sessionCookieHeader(token: string, secure: boolean): string {
 }
 
 function clearSessionCookieHeader(secure: boolean): string {
-  // The clear must carry the same Domain as the set, otherwise the browser
-  // treats it as a different cookie and the session survives logout.
+  // The clear must carry the same Domain and SameSite as the set, otherwise
+  // the browser treats it as a different cookie and the session survives logout.
   return (
-    `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Strict` +
+    `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=${cookieSameSite()}` +
     domainAttr() +
     (secure ? "; Secure" : "") +
     "; Max-Age=0; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
