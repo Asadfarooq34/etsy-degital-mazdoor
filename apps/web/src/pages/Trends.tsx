@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, type TrendPoint, type TrendsResult } from "../api";
+import { ErrorState, LoadingButton, PageHeader } from "../components";
 
 function LineChart({ points }: { points: TrendPoint[] }) {
   const W = 560;
@@ -65,11 +66,15 @@ export default function Trends() {
 
   return (
     <div>
-      <h1 className="page-title">Trends</h1>
-      <p className="page-sub">
-        12-month search interest, peak season, and country breakdown.{" "}
-        <span className="stat-note">Google Trends proxy — not Etsy search volume.</span>
-      </p>
+      <PageHeader
+        title="Trends"
+        sub={
+          <>
+            12-month search interest, peak season, and country breakdown.{" "}
+            <span className="stat-note">Google Trends proxy — not Etsy search volume.</span>
+          </>
+        }
+      />
 
       <div className="card">
         <div className="row">
@@ -84,13 +89,15 @@ export default function Trends() {
               onKeyDown={(e) => e.key === "Enter" && void analyze()}
             />
           </div>
-          <button className="btn btn-teal" onClick={() => void analyze()} disabled={loading}>
-            {loading ? "Loading…" : "Track →"}
-          </button>
+          <LoadingButton className="btn btn-teal" onClick={() => void analyze()} loading={loading}>
+            Track →
+          </LoadingButton>
         </div>
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && (
+        <ErrorState message={error} onRetry={() => void analyze()} retryLabel="Track again" />
+      )}
 
       {result && (
         <div>

@@ -1,5 +1,13 @@
 import { useState } from "react";
 import { api, type BuzzRow } from "../api";
+import {
+  Button,
+  EmptyState,
+  ErrorState,
+  LoadingButton,
+  ModeBadge,
+  PageHeader,
+} from "../components";
 
 function Sparkline({ values }: { values: number[] }) {
   const W = 90;
@@ -45,12 +53,11 @@ export default function TrendBuzz() {
 
   return (
     <div>
-      <h1 className="page-title">Trend Buzz</h1>
-      <p className="page-sub">
-        Emerging keywords ranked by a relative heat index — tag frequency × listing engagement.
-        Not absolute search volume.{" "}
-        {mode === "fixture" && <span className="badge badge-fixture">FIXTURE DATA</span>}
-      </p>
+      <PageHeader
+        title="Trend Buzz"
+        sub="Emerging keywords ranked by a relative heat index — tag frequency × listing engagement. Not absolute search volume."
+        badge={<ModeBadge mode={mode} />}
+      />
 
       <div className="card">
         <div className="row">
@@ -65,13 +72,15 @@ export default function TrendBuzz() {
               onKeyDown={(e) => e.key === "Enter" && void find()}
             />
           </div>
-          <button className="btn btn-red" onClick={() => void find()} disabled={loading}>
-            {loading ? "Finding…" : "Find buzz →"}
-          </button>
+          <LoadingButton className="btn btn-red" onClick={() => void find()} loading={loading}>
+            Find buzz →
+          </LoadingButton>
         </div>
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && (
+        <ErrorState message={error} onRetry={() => void find()} retryLabel="Find buzz again" />
+      )}
 
       {rows && (
         <>
@@ -170,9 +179,16 @@ export default function TrendBuzz() {
       )}
 
       {!rows && !error && (
-        <div className="card">
-          <div className="empty">Hit "Find buzz" to see what's heating up.</div>
-        </div>
+        <EmptyState
+          icon="📈"
+          title="See what's heating up"
+          hint="Runs a fresh scan of tag frequency × listing engagement across the marketplace."
+          action={
+            <Button variant="secondary" onClick={() => void find()} loading={loading}>
+              Find buzz →
+            </Button>
+          }
+        />
       )}
     </div>
   );
