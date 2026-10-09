@@ -1,19 +1,16 @@
 import { useState, type FormEvent } from "react";
-import { Alert, Badge, Button, Card, Input, PageHeader, Textarea } from "../components";
+import { Alert, Button, Card, Input, PageHeader, Textarea } from "../components";
 import { api } from "../api";
-
-/** Shown until Asad supplies the real support address. */
-const SUPPORT_EMAIL = "[NEEDS USER INPUT: support email]";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 type FieldErrors = { name?: string; email?: string; subject?: string; message?: string };
 
 /**
- * Contact page — reaches the tool's owner/admin.
- * Messages are stored in the local SQLite inbox (`contact_messages`); there
- * is no email sending yet — forwarding needs Asad's SMTP config (see
- * apps/api/src/contact.ts).
+ * Contact page — reaches the tool's operator.
+ * Messages are sent to POST /api/contact (public, rate-limited, spam-filtered)
+ * and stored in the service database so the operator can read and respond.
+ * A direct support email address will be published here once configured.
  */
 export default function Contact({ go }: { go: (page: "privacy" | "terms") => void }) {
   const [name, setName] = useState("");
@@ -74,28 +71,25 @@ export default function Contact({ go }: { go: (page: "privacy" | "terms") => voi
     <div>
       <PageHeader
         title="Contact Us"
-        sub="Questions, feedback, or bug reports about Digital Mazdur — send a message and it lands in the local inbox."
+        sub="Questions, feedback, or bug reports about Digital Mazdur — send a message below."
       />
 
       <div className="grid-responsive" style={{ ["--dm-cols" as string]: 2 }}>
         <Card title="How to reach us" sub="The fastest way is the form on this page.">
           <div className="contact-method">
-            <div className="contact-method-label">Support email</div>
-            <div className="contact-method-value">
-              {SUPPORT_EMAIL}{" "}
-              <Badge tone="amber">needs input</Badge>
-            </div>
+            <div className="contact-method-label">Contact form</div>
+            <div className="contact-method-value">Right on this page</div>
             <p className="stat-note">
-              Email forwarding is not wired up yet — until Asad configures SMTP, messages are only
-              stored in the tool's local database.
+              Every submitted message is saved to the service&rsquo;s database and reviewed by
+              the operator. Replies go to the email address you provide.
             </p>
           </div>
           <div className="contact-method">
-            <div className="contact-method-label">In-app inbox</div>
-            <div className="contact-method-value">Local database</div>
+            <div className="contact-method-label">Support email</div>
+            <div className="contact-method-value">asadfarooq7985@gmail.com</div>
             <p className="stat-note">
-              Every submitted message is saved to the <code>contact_messages</code> table in this
-              machine's SQLite database — nothing leaves your computer.
+              A direct support email address will be added here soon. Until then, the form
+              above is the way to reach us.
             </p>
           </div>
         </Card>
@@ -103,13 +97,13 @@ export default function Contact({ go }: { go: (page: "privacy" | "terms") => voi
         <Card title="Send a message" sub="We read everything — replies go to the email you provide.">
           {sent && (
             <Alert tone="success">
-              <strong>Message sent.</strong> Thanks for reaching out — your message has been saved
-              and will be reviewed.
+              <strong>Message sent.</strong> Thanks for reaching out — your message has been
+              saved and will be reviewed.
             </Alert>
           )}
           {sendError && (
             <Alert tone="error">
-              <strong>Couldn't send.</strong> {sendError}
+              <strong>Couldn&rsquo;t send.</strong> {sendError}
             </Alert>
           )}
           <form onSubmit={submit} noValidate>
@@ -138,10 +132,10 @@ export default function Contact({ go }: { go: (page: "privacy" | "terms") => voi
               label="Email"
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
+              placeholder="Your email address"
               error={errors.email}
               autoComplete="email"
+              onChange={(e) => setEmail(e.target.value)}
             />
             <Input
               label="Subject"
@@ -168,8 +162,9 @@ export default function Contact({ go }: { go: (page: "privacy" | "terms") => voi
 
       <Card title="Your privacy" className="contact-privacy">
         <p className="stat-note" style={{ margin: 0 }}>
-          Submitting this form stores your name, email, subject, and message on this computer only —
-          it is never sent to any third party. Read the full{" "}
+          Submitting this form stores your name, email, subject, and message on the
+          service&rsquo;s server so the operator can respond — it is never sold or shared
+          with third parties. Read the full{" "}
           <button type="button" className="link-btn" onClick={() => go("privacy")}>
             Privacy Policy
           </button>{" "}

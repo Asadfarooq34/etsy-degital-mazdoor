@@ -1,0 +1,607 @@
+From 3fb7efa4337e6b2bd879ae03d008442d484d439f Mon Sep 17 00:00:00 2001
+From: Asad <asad@local>
+Date: Fri, 9 Oct 2026 21:33:56 +0000
+Subject: [PATCH 1/2] =?UTF-8?q?web:=20compliance-ready=20legal=20pages=20?=
+ =?UTF-8?q?=E2=80=94=20hosted=20reality,=20no=20placeholders,=20working=20?=
+ =?UTF-8?q?contact?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+---
+ apps/web/src/pages/Contact.tsx |  49 ++++++-------
+ apps/web/src/pages/Privacy.tsx | 125 ++++++++++++++++++--------------
+ apps/web/src/pages/Terms.tsx   | 126 +++++++++++++++++++--------------
+ 3 files changed, 169 insertions(+), 131 deletions(-)
+
+diff --git a/apps/web/src/pages/Contact.tsx b/apps/web/src/pages/Contact.tsx
+index 30d43f8..998ded6 100644
+--- a/apps/web/src/pages/Contact.tsx
++++ b/apps/web/src/pages/Contact.tsx
+@@ -1,19 +1,16 @@
+ import { useState, type FormEvent } from "react";
+-import { Alert, Badge, Button, Card, Input, PageHeader, Textarea } from "../components";
++import { Alert, Button, Card, Input, PageHeader, Textarea } from "../components";
+ import { api } from "../api";
+ 
+-/** Shown until Asad supplies the real support address. */
+-const SUPPORT_EMAIL = "[NEEDS USER INPUT: support email]";
+-
+ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+ 
+ type FieldErrors = { name?: string; email?: string; subject?: string; message?: string };
+ 
+ /**
+- * Contact page — reaches the tool's owner/admin.
+- * Messages are stored in the local SQLite inbox (`contact_messages`); there
+- * is no email sending yet — forwarding needs Asad's SMTP config (see
+- * apps/api/src/contact.ts).
++ * Contact page — reaches the tool's operator.
++ * Messages are sent to POST /api/contact (public, rate-limited, spam-filtered)
++ * and stored in the service database so the operator can read and respond.
++ * A direct support email address will be published here once configured.
+  */
+ export default function Contact({ go }: { go: (page: "privacy" | "terms") => void }) {
+   const [name, setName] = useState("");
+@@ -74,28 +71,25 @@ export default function Contact({ go }: { go: (page: "privacy" | "terms") => voi
+     <div>
+       <PageHeader
+         title="Contact Us"
+-        sub="Questions, feedback, or bug reports about Digital Mazdur — send a message and it lands in the local inbox."
++        sub="Questions, feedback, or bug reports about Digital Mazdur — send a message below."
+       />
+ 
+       <div className="grid-responsive" style={{ ["--dm-cols" as string]: 2 }}>
+         <Card title="How to reach us" sub="The fastest way is the form on this page.">
+           <div className="contact-method">
+-            <div className="contact-method-label">Support email</div>
+-            <div className="contact-method-value">
+-              {SUPPORT_EMAIL}{" "}
+-              <Badge tone="amber">needs input</Badge>
+-            </div>
++            <div className="contact-method-label">Contact form</div>
++            <div className="contact-method-value">Right on this page</div>
+             <p className="stat-note">
+-              Email forwarding is not wired up yet — until Asad configures SMTP, messages are only
+-              stored in the tool's local database.
++              Every submitted message is saved to the service&rsquo;s database and reviewed by
++              the operator. Replies go to the email address you provide.
+             </p>
+           </div>
+           <div className="contact-method">
+-            <div className="contact-method-label">In-app inbox</div>
+-            <div className="contact-method-value">Local database</div>
++            <div className="contact-method-label">Support email</div>
++            <div className="contact-method-value">To be published</div>
+             <p className="stat-note">
+-              Every submitted message is saved to the <code>contact_messages</code> table in this
+-              machine's SQLite database — nothing leaves your computer.
++              A direct support email address will be added here soon. Until then, the form
++              above is the way to reach us.
+             </p>
+           </div>
+         </Card>
+@@ -103,13 +97,13 @@ export default function Contact({ go }: { go: (page: "privacy" | "terms") => voi
+         <Card title="Send a message" sub="We read everything — replies go to the email you provide.">
+           {sent && (
+             <Alert tone="success">
+-              <strong>Message sent.</strong> Thanks for reaching out — your message has been saved
+-              and will be reviewed.
++              <strong>Message sent.</strong> Thanks for reaching out — your message has been
++              saved and will be reviewed.
+             </Alert>
+           )}
+           {sendError && (
+             <Alert tone="error">
+-              <strong>Couldn't send.</strong> {sendError}
++              <strong>Couldn&rsquo;t send.</strong> {sendError}
+             </Alert>
+           )}
+           <form onSubmit={submit} noValidate>
+@@ -138,10 +132,10 @@ export default function Contact({ go }: { go: (page: "privacy" | "terms") => voi
+               label="Email"
+               type="email"
+               value={email}
+-              onChange={(e) => setEmail(e.target.value)}
+-              placeholder="you@example.com"
++              placeholder="Your email address"
+               error={errors.email}
+               autoComplete="email"
++              onChange={(e) => setEmail(e.target.value)}
+             />
+             <Input
+               label="Subject"
+@@ -168,8 +162,9 @@ export default function Contact({ go }: { go: (page: "privacy" | "terms") => voi
+ 
+       <Card title="Your privacy" className="contact-privacy">
+         <p className="stat-note" style={{ margin: 0 }}>
+-          Submitting this form stores your name, email, subject, and message on this computer only —
+-          it is never sent to any third party. Read the full{" "}
++          Submitting this form stores your name, email, subject, and message on the
++          service&rsquo;s server so the operator can respond — it is never sold or shared
++          with third parties. Read the full{" "}
+           <button type="button" className="link-btn" onClick={() => go("privacy")}>
+             Privacy Policy
+           </button>{" "}
+diff --git a/apps/web/src/pages/Privacy.tsx b/apps/web/src/pages/Privacy.tsx
+index 8396585..812ed3e 100644
+--- a/apps/web/src/pages/Privacy.tsx
++++ b/apps/web/src/pages/Privacy.tsx
+@@ -1,10 +1,12 @@
+-import { Badge, Card, PageHeader } from "../components";
++import { Card, PageHeader } from "../components";
+ 
+ /**
+- * Privacy Policy for Digital Mazdur.
+- * Product-specific to a local-only, single-admin research tool: no tracking
+- * cookies, no third-party analytics, data stays on the admin's machine.
+- * Items Asad must still supply are marked [NEEDS USER INPUT].
++ * Privacy Policy for Digital Mazdur (digitalmazdur.online).
++ *
++ * Written for the hosted reality: the app runs on the operator's cloud
++ * server (Oracle Cloud, Mumbai region) behind Cloudflare, with a single
++ * admin account. Items the operator must still supply are marked in
++ * [BRACKETS] — fill them before applying for Google/Etsy API access.
+  */
+ export default function Privacy() {
+   return (
+@@ -12,106 +14,125 @@ export default function Privacy() {
+       <PageHeader
+         title="Privacy Policy"
+         sub="How Digital Mazdur collects, uses, and stores data. Last updated: October 2026."
+-        badge={<Badge tone="amber">needs input</Badge>}
+       />
+ 
+       <Card title="1. Who we are">
+         <p>
+-          <strong>[NEEDS USER INPUT: business/legal name]</strong> ("we", "us") operates Digital
+-          Mazdur, a personal Etsy keyword-research tool. Contact:{" "}
+-          <strong>[NEEDS USER INPUT: contact email]</strong>.
++          <strong>[YOUR BUSINESS / OPERATOR NAME]</strong> (&ldquo;we&rdquo;, &ldquo;us&rdquo;)
++          operates Digital Mazdur, a private-beta Etsy keyword-research tool available at
++          digitalmazdur.online. You can reach us at{" "}
++          <strong>[YOUR CONTACT EMAIL]</strong> or through the{" "}
++          <a href="/contact">Contact page</a>.
+         </p>
+       </Card>
+ 
+       <Card title="2. Data we collect">
+         <ul className="legal-list">
++          <li>
++            <strong>Account data.</strong> A single admin password protects the dashboard. The
++            password is stored as a bcrypt hash on our server; successful logins create a
++            short-lived session token kept in a strictly-necessary, HttpOnly, Secure cookie.
++          </li>
+           <li>
+             <strong>Research data you enter.</strong> Search queries, keywords, shop names, and
+-            listing IDs you type into the tools are stored locally in this machine's SQLite
+-            database so the app can show history, snapshots, and alerts.
++            listing IDs you type into the tools are stored in the service&rsquo;s database so the
++            app can show history, snapshots, and alerts.
+           </li>
+           <li>
+-            <strong>Contact form data.</strong> If you use the Contact page, your name, email,
+-            subject, and message are stored in the local <code>contact_messages</code> table.
++            <strong>Contact form data.</strong> If you use the Contact page, your name, email
++            address, subject, and message are stored so we can read and respond to them.
+           </li>
+           <li>
+-            <strong>Admin credentials.</strong> A single admin password (stored as a bcrypt hash in
+-            an environment variable) and short-lived session tokens keep the app login-gated.
++            <strong>Technical data.</strong> For security and rate limiting we log IP addresses,
++            request timestamps, and basic browser information. Traffic passes through Cloudflare,
++            our CDN and reverse proxy, which also processes IP addresses under its own privacy
++            policy.
+           </li>
+           <li>
+-            <strong>Your own API keys.</strong> Etsy, Google Ads, and Gemini keys you configure are
+-            kept server-side in environment variables and never sent to the browser or any other
+-            party.
++            <strong>API keys.</strong> Etsy, Google Ads, and Gemini keys configured by the
++            operator are kept server-side in environment variables and are never sent to the
++            browser or to any other party.
+           </li>
+         </ul>
+         <p>
+-          <strong>We do not use</strong> tracking cookies, third-party analytics, advertising
+-          pixels, or any cross-site tracking. The app works entirely on your own computer.
++          <strong>We do not use</strong> advertising cookies, third-party analytics, or
++          cross-site tracking. The only cookies are the strictly-necessary login session cookie
++          and Cloudflare&rsquo;s security cookies.
+         </p>
+       </Card>
+ 
+-      <Card title="3. How your data flows to third-party APIs">
++      <Card title="3. How your data flows to third-party services">
+         <ul className="legal-list">
+           <li>
+             <strong>Etsy Open API v3.</strong> Keywords, listing IDs, and shop names you research
+-            are sent to Etsy's API to fetch live listing and shop data. Etsy's own privacy policy
+-            governs what they do with those requests.
++            are sent to Etsy&rsquo;s API to fetch live listing and shop data. Etsy&rsquo;s own
++            privacy policy governs those requests. Digital Mazdur is not affiliated with or
++            endorsed by Etsy, Inc.
+           </li>
+           <li>
+-            <strong>Google Trends (unofficial proxy).</strong> Keywords are sent to an unofficial
+-            Google Trends endpoint to estimate search interest; results are labeled as proxy data
+-            in the app.
++            <strong>Google Ads API (optional).</strong> Only if the operator connects a Google
++            Ads account: keywords are sent to Google to fetch real search-volume estimates.
+           </li>
+           <li>
+-            <strong>Google Ads API (optional).</strong> Only if you connect your own Google Ads
+-            account: keywords are sent to Google to fetch real search-volume estimates.
++            <strong>Google Gemini (optional).</strong> Only if the operator configures an API
++            key: product text you submit is sent to Gemini to generate titles, tags, and
++            descriptions.
+           </li>
+           <li>
+-            <strong>Google Gemini (optional).</strong> Only if you configure your own API key:
+-            product descriptions you write are sent to Gemini to generate titles, tags, and
+-            descriptions.
++            <strong>Google Trends data.</strong> Search-interest charts are built from publicly
++            available Google Trends data and are always labeled as such in the app.
++          </li>
++          <li>
++            <strong>Cloudflare.</strong> All traffic is proxied through Cloudflare for
++            performance and security; they process connection data (such as IP addresses) under
++            their privacy policy.
+           </li>
+         </ul>
+         <p>
+-          No data is sent to any API you have not configured or used. API responses are cached in
+-          the local database to reduce repeat requests.
++          No data is sent to any service you have not used. API responses may be cached in the
++          service database to reduce repeat requests. We never sell your data.
+         </p>
+       </Card>
+ 
+-      <Card title="4. How we use and store data">
++      <Card title="4. Storage and security">
+         <p>
+-          Data is used only to run the research tools: showing results, tracking keyword and shop
+-          snapshots over time, and raising alerts you configured. Everything is stored in a SQLite
+-          database file on this machine. There is no cloud sync, no backup to external servers,
+-          and no sale or sharing of your data with anyone.
++          Data is stored in a database on our cloud server (Oracle Cloud, Mumbai region). We
++          use HTTPS everywhere, HttpOnly/Secure session cookies, login rate limiting, and
++          firewall rules to protect it. No method of transmission or storage is 100% secure, so
++          we cannot guarantee absolute security.
+         </p>
+       </Card>
+ 
+       <Card title="5. Data retention">
+         <p>
+-          Research snapshots and contact messages are kept for{" "}
+-          <strong>[NEEDS USER INPUT: data retention period, e.g. "12 months"]</strong>. Keyword
+-          snapshots currently have no automatic retention policy — old rows accumulate until
+-          manually deleted. You can delete tracked keywords, tracked shops, alerts, and keyword
+-          lists at any time from inside the app.
++          Research snapshots, alerts, and contact messages are kept until you delete them —
++          there is no automatic expiry. You can delete tracked keywords, tracked shops,
++          alerts, and keyword lists at any time from inside the app. If you ask us to delete
++          your contact messages, we will do so promptly.
+         </p>
+       </Card>
+ 
+       <Card title="6. Your rights">
+         <p>
+-          Because all data lives on your own machine, you are in full control: you can view it
+-          (the SQLite file in <code>apps/api/data/</code>), export it, or delete it entirely by
+-          removing that file while the API is stopped. If this tool is ever offered to other
+-          people, their rights to access, correct, or delete their personal data will be honored
+-          on request to the contact email above.
++          You may request access to, correction of, or deletion of any personal data we hold
++          about you by contacting us at <strong>[YOUR CONTACT EMAIL]</strong>. We will respond
++          within a reasonable time.
++        </p>
++      </Card>
++
++      <Card title="7. Children">
++        <p>
++          Digital Mazdur is not directed at children under 13 (or the minimum age in your
++          jurisdiction), and we do not knowingly collect data from them.
+         </p>
+       </Card>
+ 
+-      <Card title="7. Jurisdiction & changes">
++      <Card title="8. Jurisdiction & changes">
+         <p>
+-          This policy is governed by the laws of <strong>[NEEDS USER INPUT: jurisdiction]</strong>.
+-          We may update this policy as the tool changes; the "last updated" date at the top will
+-          reflect the latest version.
++          This policy is governed by the laws of{" "}
++          <strong>[YOUR JURISDICTION, e.g. Pakistan]</strong>. We may update this policy as the
++          tool changes; the &ldquo;last updated&rdquo; date at the top will reflect the latest
++          version, and material changes will be noted here.
+         </p>
+       </Card>
+     </div>
+diff --git a/apps/web/src/pages/Terms.tsx b/apps/web/src/pages/Terms.tsx
+index 7f90a76..b25cc53 100644
+--- a/apps/web/src/pages/Terms.tsx
++++ b/apps/web/src/pages/Terms.tsx
+@@ -1,9 +1,11 @@
+-import { Badge, Card, PageHeader } from "../components";
++import { Card, PageHeader } from "../components";
+ 
+ /**
+- * Terms & Conditions for Digital Mazdur.
+- * Written for a personal, local-only research tool with a single admin user.
+- * Items Asad must still supply are marked [NEEDS USER INPUT].
++ * Terms & Conditions for Digital Mazdur (digitalmazdur.online).
++ *
++ * Written for the hosted private-beta reality. Items the operator must
++ * still supply are marked in [BRACKETS] — fill them before applying for
++ * Google/Etsy API access.
+  */
+ export default function Terms() {
+   return (
+@@ -11,81 +13,103 @@ export default function Terms() {
+       <PageHeader
+         title="Terms & Conditions"
+         sub="The rules for using Digital Mazdur. Last updated: October 2026."
+-        badge={<Badge tone="amber">needs input</Badge>}
+       />
+ 
+       <Card title="1. What this tool is">
+         <p>
+-          Digital Mazdur (operated by <strong>[NEEDS USER INPUT: business name]</strong>) is a
+-          personal Etsy keyword- and product-research tool. It fetches live data from Etsy's API
+-          and optional Google services and presents estimates to help with product research. It is
+-          provided for personal research use — not as a service offered to the public.
++          Digital Mazdur (operated by <strong>[YOUR BUSINESS / OPERATOR NAME]</strong>) is a
++          private-beta Etsy keyword- and product-research tool. It fetches live data from
++          Etsy&rsquo;s API and optional Google services and presents it alongside
++          clearly-labeled in-house estimates to help with product research. It is an
++          independent tool — not affiliated with, endorsed by, or sponsored by Etsy, Inc. or
++          Google LLC.
+         </p>
+       </Card>
+ 
+-      <Card title="2. Permitted use">
++      <Card title="2. Your account & responsibilities">
+         <ul className="legal-list">
+-          <li>Use the tool for your own Etsy product and keyword research.</li>
+-          <li>Respect the terms of service of Etsy, Google, and any other API you connect.</li>
+-          <li>Do not use the tool to scrape, spam, harass, or violate anyone's rights.</li>
+           <li>
+-            Do not attempt to bypass the login gate, rate limits, or other technical protections.
++            Access to the dashboard is protected by a single admin password. You are
++            responsible for keeping that password secret and for everything done through your
++            session.
++          </li>
++          <li>
++            If you believe the password is compromised, change it in the server&rsquo;s
++            configuration and restart the API immediately.
++          </li>
++          <li>
++            API keys connected to the tool (Etsy, Google Ads, Gemini) are the
++            operator&rsquo;s own — they must be kept confidential and never shared.
+           </li>
+         </ul>
+       </Card>
+ 
+-      <Card title="3. Your account & responsibilities">
+-        <p>
+-          Access is protected by a single admin password. You are responsible for keeping that
+-          password secret and for everything done through your session. If you believe the
+-          password is compromised, change <code>ADMIN_PASSWORD</code> and restart the API
+-          immediately. API keys you connect (Etsy, Google Ads, Gemini) are your own — keep them
+-          confidential and never share your <code>.env</code> file.
+-        </p>
++      <Card title="3. Acceptable use">
++        <ul className="legal-list">
++          <li>Use the tool for legitimate Etsy product and keyword research.</li>
++          <li>
++            Respect the terms of service of Etsy, Google, and any other service the tool
++            connects to — including their API rate limits and usage policies.
++          </li>
++          <li>
++            Do not use the tool to scrape at abusive volumes, spam, harass, infringe
++            intellectual-property rights, or violate anyone&rsquo;s rights.
++          </li>
++          <li>
++            Do not attempt to bypass the login gate, rate limits, or other technical
++            protections.
++          </li>
++        </ul>
+       </Card>
+ 
+-      <Card title="4. Service limitations">
++      <Card title="4. Data, estimates & service limitations">
+         <ul className="legal-list">
+           <li>
+-            <strong>API quotas.</strong> Etsy allows a limited number of API calls per day; heavy
+-            use of tools like Find Hot Products or Snapshot All can exhaust the quota, after which
+-            live data is unavailable until it resets.
++            <strong>Live data.</strong> Listing counts, titles, prices, favorites, and shop
++            details come from the Etsy Open API at the moment you search.
++          </li>
++          <li>
++            <strong>Estimates are labeled.</strong> Keyword difficulty, opportunity ratings,
++            and any views/sales figures the APIs don&rsquo;t provide are in-house estimates —
++            the app marks them as such (e.g. &ldquo;est.&rdquo;). Treat them as directional,
++            not exact.
+           </li>
+           <li>
+-            <strong>Estimates are labeled.</strong> Views, sales, and competition figures that the
+-            APIs don't provide are estimates — the app marks them as such (e.g. "est."). Treat
+-            them as directional, not exact.
++            <strong>Google Trends data</strong> comes from publicly available search-interest
++            data and is labeled as such.
+           </li>
+           <li>
+-            <strong>Google Trends data</strong> comes from an unofficial proxy and may break or
+-            change without notice.
++            <strong>API quotas.</strong> Etsy and Google allow a limited number of API calls;
++            heavy use can exhaust a quota, after which live data is unavailable until it
++            resets.
+           </li>
+           <li>
+-            <strong>Local-only.</strong> The app runs on your own machine; if the API process
+-            stops, the tools (including scheduled snapshots and alerts) stop with it.
++            <strong>Beta service.</strong> As a private beta, features may change, pause, or
++            break without notice.
+           </li>
+         </ul>
+       </Card>
+ 
+       <Card title="5. No guarantees on data accuracy">
+         <p>
+-          Research metrics are provided "as is" for informational purposes. We make no warranty —
+-          express or implied — that keyword volumes, competition scores, sales estimates, or AI
+-          suggestions are accurate, complete, or fit for any particular decision (such as launching
+-          a product). Always do your own due diligence before spending money based on this data.
++          Research metrics are provided &ldquo;as is&rdquo; for informational purposes. We make
++          no warranty — express or implied — that keyword volumes, competition scores, sales
++          estimates, or AI suggestions are accurate, complete, or fit for any particular
++          decision (such as launching a product). Always do your own due diligence before
++          spending money based on this data.
+         </p>
+       </Card>
+ 
+       <Card title="6. Intellectual property">
+         <ul className="legal-list">
+           <li>
+-            The app's code, design, and original content are the property of the operator. You may
+-            not redistribute or resell the software.
++            The app&rsquo;s code, design, and original content are the property of the
++            operator. You may not redistribute or resell the software.
+           </li>
+           <li>
+-            Listing titles, images, and shop data shown in results belong to their respective Etsy
+-            sellers and to Etsy, Inc. "Etsy" is a trademark of Etsy, Inc.; this tool is not
+-            affiliated with or endorsed by Etsy, Inc.
++            Listing titles, images, and shop data shown in results belong to their respective
++            Etsy sellers and to Etsy, Inc. &ldquo;Etsy&rdquo; is a trademark of Etsy, Inc.;
++            this tool is not affiliated with or endorsed by Etsy, Inc.
+           </li>
+           <li>
+             AI-generated titles, tags, and descriptions are produced for your use, but you are
+@@ -95,17 +119,15 @@ export default function Terms() {
+         </ul>
+       </Card>
+ 
+-      <Card title="7. Acceptable use & termination">
++      <Card title="7. Misuse & suspension">
+         <p>
+-          Misuse — such as sharing the admin password publicly, exposing the local API to the
+-          internet without authorization controls, or using the tool in violation of Etsy's or
+-          Google's terms — may result in revoked API keys or disabled features at the operator's
+-          discretion. Because this is a personal tool, "termination" simply means the operator
+-          stops running it.
++          Misuse — such as sharing the admin password publicly, abusing API rate limits, or
++          using the tool in violation of Etsy&rsquo;s or Google&rsquo;s terms — may result in
++          suspended access or disabled features at the operator&rsquo;s discretion.
+         </p>
+       </Card>
+ 
+-      <Card title="8. Liability">
++      <Card title="8. Limitation of liability">
+         <p>
+           To the maximum extent permitted by law, the operator is not liable for any loss of
+           profit, data, or business opportunity arising from the use of (or inability to use)
+@@ -116,9 +138,9 @@ export default function Terms() {
+       <Card title="9. Governing law & changes">
+         <p>
+           These terms are governed by the laws of{" "}
+-          <strong>[NEEDS USER INPUT: jurisdiction / governing law]</strong>. We may update these
+-          terms as the tool evolves; the "last updated" date at the top will reflect the latest
+-          version, and continued use after a change means you accept it.
++          <strong>[YOUR JURISDICTION, e.g. Pakistan]</strong>. We may update these terms as
++          the tool evolves; the &ldquo;last updated&rdquo; date at the top will reflect the
++          latest version, and continued use after a change means you accept it.
+         </p>
+       </Card>
+     </div>
+-- 
+2.43.0
+
+
+From c703ed236ed714236490505f1794814d30081ae2 Mon Sep 17 00:00:00 2001
+From: Asad <asad@local>
+Date: Sat, 10 Oct 2026 02:37:34 +0500
+Subject: [PATCH 2/2] web: fill legal page details (operator, email,
+ jurisdiction)
+
+---
+ apps/web/src/pages/Contact.tsx | 2 +-
+ apps/web/src/pages/Privacy.tsx | 8 ++++----
+ apps/web/src/pages/Terms.tsx   | 4 ++--
+ 3 files changed, 7 insertions(+), 7 deletions(-)
+
+diff --git a/apps/web/src/pages/Contact.tsx b/apps/web/src/pages/Contact.tsx
+index 998ded6..f4f9987 100644
+--- a/apps/web/src/pages/Contact.tsx
++++ b/apps/web/src/pages/Contact.tsx
+@@ -86,7 +86,7 @@ export default function Contact({ go }: { go: (page: "privacy" | "terms") => voi
+           </div>
+           <div className="contact-method">
+             <div className="contact-method-label">Support email</div>
+-            <div className="contact-method-value">To be published</div>
++            <div className="contact-method-value">asadfarooq7985@gmail.com</div>
+             <p className="stat-note">
+               A direct support email address will be added here soon. Until then, the form
+               above is the way to reach us.
+diff --git a/apps/web/src/pages/Privacy.tsx b/apps/web/src/pages/Privacy.tsx
+index 812ed3e..af69e73 100644
+--- a/apps/web/src/pages/Privacy.tsx
++++ b/apps/web/src/pages/Privacy.tsx
+@@ -18,10 +18,10 @@ export default function Privacy() {
+ 
+       <Card title="1. Who we are">
+         <p>
+-          <strong>[YOUR BUSINESS / OPERATOR NAME]</strong> (&ldquo;we&rdquo;, &ldquo;us&rdquo;)
++          <strong>Asad Farooq</strong> (&ldquo;we&rdquo;, &ldquo;us&rdquo;)
+           operates Digital Mazdur, a private-beta Etsy keyword-research tool available at
+           digitalmazdur.online. You can reach us at{" "}
+-          <strong>[YOUR CONTACT EMAIL]</strong> or through the{" "}
++          <strong>asadfarooq7985@gmail.com</strong> or through the{" "}
+           <a href="/contact">Contact page</a>.
+         </p>
+       </Card>
+@@ -115,7 +115,7 @@ export default function Privacy() {
+       <Card title="6. Your rights">
+         <p>
+           You may request access to, correction of, or deletion of any personal data we hold
+-          about you by contacting us at <strong>[YOUR CONTACT EMAIL]</strong>. We will respond
++          about you by contacting us at <strong>asadfarooq7985@gmail.com</strong>. We will respond
+           within a reasonable time.
+         </p>
+       </Card>
+@@ -130,7 +130,7 @@ export default function Privacy() {
+       <Card title="8. Jurisdiction & changes">
+         <p>
+           This policy is governed by the laws of{" "}
+-          <strong>[YOUR JURISDICTION, e.g. Pakistan]</strong>. We may update this policy as the
++          <strong>Pakistan</strong>. We may update this policy as the
+           tool changes; the &ldquo;last updated&rdquo; date at the top will reflect the latest
+           version, and material changes will be noted here.
+         </p>
+diff --git a/apps/web/src/pages/Terms.tsx b/apps/web/src/pages/Terms.tsx
+index b25cc53..1a5f5bf 100644
+--- a/apps/web/src/pages/Terms.tsx
++++ b/apps/web/src/pages/Terms.tsx
+@@ -17,7 +17,7 @@ export default function Terms() {
+ 
+       <Card title="1. What this tool is">
+         <p>
+-          Digital Mazdur (operated by <strong>[YOUR BUSINESS / OPERATOR NAME]</strong>) is a
++          Digital Mazdur (operated by <strong>Asad Farooq</strong>) is a
+           private-beta Etsy keyword- and product-research tool. It fetches live data from
+           Etsy&rsquo;s API and optional Google services and presents it alongside
+           clearly-labeled in-house estimates to help with product research. It is an
+@@ -138,7 +138,7 @@ export default function Terms() {
+       <Card title="9. Governing law & changes">
+         <p>
+           These terms are governed by the laws of{" "}
+-          <strong>[YOUR JURISDICTION, e.g. Pakistan]</strong>. We may update these terms as
++          <strong>Pakistan</strong>. We may update these terms as
+           the tool evolves; the &ldquo;last updated&rdquo; date at the top will reflect the
+           latest version, and continued use after a change means you accept it.
+         </p>
+-- 
+2.43.0
+
