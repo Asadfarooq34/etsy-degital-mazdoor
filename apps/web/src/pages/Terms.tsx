@@ -1,7 +1,7 @@
 import { Badge, Card, PageHeader } from "../components";
 
 /**
- * Terms & Conditions for Digital Mazdoor.
+ * Terms & Conditions for Digital Mazdur.
  * Written for a personal, local-only research tool with a single admin user.
  * Items Asad must still supply are marked [NEEDS USER INPUT].
  */
@@ -10,13 +10,13 @@ export default function Terms() {
     <div>
       <PageHeader
         title="Terms & Conditions"
-        sub="The rules for using Digital Mazdoor. Last updated: October 2026."
+        sub="The rules for using Digital Mazdur. Last updated: October 2026."
         badge={<Badge tone="amber">needs input</Badge>}
       />
 
       <Card title="1. What this tool is">
         <p>
-          Digital Mazdoor (operated by <strong>[NEEDS USER INPUT: business name]</strong>) is a
+          Digital Mazdur (operated by <strong>[NEEDS USER INPUT: business name]</strong>) is a
           personal Etsy keyword- and product-research tool. It fetches live data from Etsy's API
           and optional Google services and presents estimates to help with product research. It is
           provided for personal research use — not as a service offered to the public.

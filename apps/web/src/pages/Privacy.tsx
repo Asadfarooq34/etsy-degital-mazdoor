@@ -1,7 +1,7 @@
 import { Badge, Card, PageHeader } from "../components";
 
 /**
- * Privacy Policy for Digital Mazdoor.
+ * Privacy Policy for Digital Mazdur.
  * Product-specific to a local-only, single-admin research tool: no tracking
  * cookies, no third-party analytics, data stays on the admin's machine.
  * Items Asad must still supply are marked [NEEDS USER INPUT].
@@ -11,14 +11,14 @@ export default function Privacy() {
     <div>
       <PageHeader
         title="Privacy Policy"
-        sub="How Digital Mazdoor collects, uses, and stores data. Last updated: October 2026."
+        sub="How Digital Mazdur collects, uses, and stores data. Last updated: October 2026."
         badge={<Badge tone="amber">needs input</Badge>}
       />
 
       <Card title="1. Who we are">
         <p>
           <strong>[NEEDS USER INPUT: business/legal name]</strong> ("we", "us") operates Digital
-          Mazdoor, a personal Etsy keyword-research tool. Contact:{" "}
+          Mazdur, a personal Etsy keyword-research tool. Contact:{" "}
           <strong>[NEEDS USER INPUT: contact email]</strong>.
         </p>
       </Card>

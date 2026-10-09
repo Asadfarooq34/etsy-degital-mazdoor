@@ -30,7 +30,7 @@ export default function Overview({
     <div>
       <h1 className="page-title">Overview</h1>
       <p className="page-sub">
-        Digital Mazdoor — your personal, local-only Etsy research toolkit. Every number is
+        Digital Mazdur — your personal, local-only Etsy research toolkit. Every number is
         measured live; estimates are always labeled <span className="badge badge-est">est.</span>
       </p>
 

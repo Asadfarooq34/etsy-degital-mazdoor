@@ -74,7 +74,7 @@ export default function Contact({ go }: { go: (page: "privacy" | "terms") => voi
     <div>
       <PageHeader
         title="Contact Us"
-        sub="Questions, feedback, or bug reports about Digital Mazdoor — send a message and it lands in the local inbox."
+        sub="Questions, feedback, or bug reports about Digital Mazdur — send a message and it lands in the local inbox."
       />
 
       <div className="grid-responsive" style={{ ["--dm-cols" as string]: 2 }}>

@@ -32,7 +32,7 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
         <div className="login-brand">
           <div className="brand-mark login-mark">DM</div>
           <div>
-            <div className="login-title">Digital Mazdoor</div>
+            <div className="login-title">Digital Mazdur</div>
             <div className="login-sub">Etsy research toolkit</div>
           </div>
         </div>

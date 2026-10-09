@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { Logo } from "../components";
 
 /**
- * Public marketing homepage for Digital Mazdoor (`/`).
+ * Public marketing homepage for Digital Mazdur (`/`).
  *
  * Original design, purple identity. Rules:
  * - No testimonials, no invented stats, no fake ratings, no fake screenshots.
@@ -291,8 +291,8 @@ const FEATURES: Feature[] = [
 
 const FAQS: { q: string; a: string }[] = [
   {
-    q: "Is Digital Mazdoor affiliated with Etsy?",
-    a: "No. Digital Mazdoor is an independent tool and is not affiliated with, endorsed by, or sponsored by Etsy, Inc. We use the public Etsy Open API the same way any third-party tool does. Etsy is a trademark of Etsy, Inc.",
+    q: "Is Digital Mazdur affiliated with Etsy?",
+    a: "No. Digital Mazdur is an independent tool and is not affiliated with, endorsed by, or sponsored by Etsy, Inc. We use the public Etsy Open API the same way any third-party tool does. Etsy is a trademark of Etsy, Inc.",
   },
   {
     q: "Where does the data come from?",
@@ -308,7 +308,7 @@ const FAQS: { q: string; a: string }[] = [
   },
   {
     q: "What does it cost?",
-    a: "Digital Mazdoor is free to use while it is in private beta. Pricing plans will be announced here before any paid tier launches.",
+    a: "Digital Mazdur is free to use while it is in private beta. Pricing plans will be announced here before any paid tier launches.",
   },
   {
     q: "How is this different from other keyword tools?",
@@ -325,9 +325,9 @@ export default function Homepage() {
       {/* ---- nav ---- */}
       <header className="hp-nav">
         <div className="hp-inner hp-nav-row">
-          <a href="/" className="hp-brand" aria-label="Digital Mazdoor home">
+          <a href="/" className="hp-brand" aria-label="Digital Mazdur home">
             <Logo size={34} />
-            <span>Digital Mazdoor</span>
+            <span>Digital Mazdur</span>
           </a>
           <nav className="hp-links" aria-label="Primary">
             <a href="#features">Features</a>
@@ -357,7 +357,7 @@ export default function Homepage() {
               Find the Etsy keywords <span className="grad">worth building on</span>
             </h1>
             <p className="hp-sub">
-              Digital Mazdoor shows you real, live Etsy data — listings, prices, favorites, and
+              Digital Mazdur shows you real, live Etsy data — listings, prices, favorites, and
               competition — and pairs it with honest, clearly-labeled estimates so you can spot
               winnable keywords with confidence.
             </p>
@@ -477,7 +477,7 @@ export default function Homepage() {
               <div className="n">1</div>
               <h3>Search any keyword</h3>
               <p>
-                Type in a product idea or niche phrase. Digital Mazdoor queries the live Etsy API
+                Type in a product idea or niche phrase. Digital Mazdur queries the live Etsy API
                 and pulls related terms in seconds.
               </p>
             </div>
@@ -579,9 +579,9 @@ export default function Homepage() {
       <footer className="hp-footer">
         <div className="hp-inner">
           <div className="hp-foot-grid">
-            <a href="/" className="hp-brand" aria-label="Digital Mazdoor home">
+            <a href="/" className="hp-brand" aria-label="Digital Mazdur home">
               <Logo size={30} />
-              <span>Digital Mazdoor</span>
+              <span>Digital Mazdur</span>
             </a>
             <nav className="hp-foot-links" aria-label="Legal">
               <a href="/privacy">Privacy</a>
@@ -590,9 +590,9 @@ export default function Homepage() {
             </nav>
           </div>
           <p className="hp-copy">
-            © 2026 Digital Mazdoor. All rights reserved.
+            © 2026 Digital Mazdur. All rights reserved.
             <br />
-            Digital Mazdoor is an independent tool and is not affiliated with, endorsed by, or
+            Digital Mazdur is an independent tool and is not affiliated with, endorsed by, or
             sponsored by Etsy, Inc. Etsy is a trademark of Etsy, Inc.
           </p>
         </div>
