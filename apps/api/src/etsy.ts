@@ -119,7 +119,7 @@ const FIXTURE_LISTINGS: (Listing & { fixture: true })[] = [
 const FIXTURE_SHOP: Shop & { fixture: true } = {
   fixture: true,
   shopId: 9001,
-  shopName: "Fixture Studio (not real)",
+  shopName: "Fixture Studio (sample data)",
   transactionSoldCount: 2600,
   reviewCount: 192,
   rating: 4.9,
@@ -177,6 +177,10 @@ export class EtsyClient {
     }
     if (res.status === 429) {
       throw new Error("Etsy rate limit hit (429) — backing off");
+    }
+    if (res.status === 404) {
+      // M7: surfaced by routes as HTTP 404, never a 500.
+      throw Object.assign(new Error("Etsy: not found"), { code: "ETSY_NOT_FOUND" });
     }
     if (!res.ok) {
       throw new Error(`Etsy API ${res.status}: ${await res.text()}`);
@@ -275,8 +279,11 @@ export class EtsyClient {
 
   /** Find a shop by name (live: search shops endpoint; fixture: canned shop). */
   async findShopByName(name: string): Promise<(Shop & { fixture?: true }) | null> {
+    // M9: fixture/degraded mode never renames the sample shop to the user's input —
+    // always show the fixed "Fixture Studio (sample data)" label.
+    void name;
     if (this.mode === "fixture" || this.degraded) {
-      return { ...FIXTURE_SHOP, shopName: name };
+      return { ...FIXTURE_SHOP };
     }
     try {
       const raw = await this.get<{ results: EtsyShopRaw[] }>(
@@ -285,7 +292,7 @@ export class EtsyClient {
       const first = raw.results?.[0];
       return first ? mapShop(first) : null;
     } catch (e) {
-      if (EtsyClient.isAuthError(e)) return { ...FIXTURE_SHOP, shopName: name };
+      if (EtsyClient.isAuthError(e)) return { ...FIXTURE_SHOP };
       throw e;
     }
   }

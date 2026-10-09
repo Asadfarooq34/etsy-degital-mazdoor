@@ -5,9 +5,22 @@
 import type { FastifyInstance } from "fastify";
 import { estimateSalesPerMonth, shopPerListingPerMonth } from "@digital-mazdoor/core";
 import type { EtsyClient } from "./etsy.js";
+import { notFound, parseOptionalNumber } from "./validate.js";
 
 function badRequest(msg: string): Error {
   return Object.assign(new Error(msg), { statusCode: 400 });
+}
+
+/** M7: an Etsy 404 (listing/shop gone) must surface as HTTP 404, not 500. */
+function isEtsyNotFound(e: unknown): boolean {
+  return (
+    typeof e === "object" && e !== null && (e as { code?: string }).code === "ETSY_NOT_FOUND"
+  );
+}
+
+function rethrowNotFound(e: unknown, what: string): never {
+  if (isEtsyNotFound(e)) throw notFound(`${what} not found on Etsy.`);
+  throw e;
 }
 
 export function registerDiscoveryRoutes(app: FastifyInstance, etsy: EtsyClient): void {
@@ -136,9 +149,10 @@ export function registerDiscoveryRoutes(app: FastifyInstance, etsy: EtsyClient):
     if (!keyword.trim()) throw badRequest("?keyword= is required");
     const live = etsy.effectiveMode === "live";
 
-    const lo = minPrice.trim() === "" ? 0 : Number(minPrice);
-    const hi = maxPrice.trim() === "" ? Infinity : Number(maxPrice);
-    const minF = minFavs.trim() === "" ? 0 : Number(minFavs);
+    // M5: non-numeric filters → 400, never a silent 0-row result.
+    const lo = parseOptionalNumber(minPrice, "minPrice") ?? 0;
+    const hi = parseOptionalNumber(maxPrice, "maxPrice") ?? Infinity;
+    const minF = parseOptionalNumber(minFavs, "minFavs") ?? 0;
     const maxAge =
       released === "30" ? 30 : released === "180" ? 180 : released === "365" ? 365 : Infinity;
 
@@ -230,8 +244,13 @@ export function registerDiscoveryRoutes(app: FastifyInstance, etsy: EtsyClient):
     const id = Number(listingId);
     if (!id) throw badRequest("?listingId= is required");
 
-    const listing = await etsy.getListing(id);
-    if (!listing) throw badRequest("Listing not found.");
+    let listing: Awaited<ReturnType<typeof etsy.getListing>>;
+    try {
+      listing = await etsy.getListing(id);
+    } catch (e) {
+      rethrowNotFound(e, "Listing");
+    }
+    if (!listing) throw notFound("Listing not found.");
     const live = etsy.effectiveMode === "live";
     const checks: { name: string; status: "pass" | "warn" | "fail"; detail: string; tip: string }[] = [];
 
@@ -383,8 +402,14 @@ export function registerDiscoveryRoutes(app: FastifyInstance, etsy: EtsyClient):
     const idB = Number(b);
     if (!idA || !idB) throw badRequest("?a= and ?b= listing IDs are required");
 
-    const [la, lb] = await Promise.all([etsy.getListing(idA), etsy.getListing(idB)]);
-    if (!la || !lb) throw badRequest("One or both listings not found.");
+    let la: Awaited<ReturnType<typeof etsy.getListing>>;
+    let lb: Awaited<ReturnType<typeof etsy.getListing>>;
+    try {
+      [la, lb] = await Promise.all([etsy.getListing(idA), etsy.getListing(idB)]);
+    } catch (e) {
+      rethrowNotFound(e, "Listing");
+    }
+    if (!la || !lb) throw notFound("One or both listings not found.");
 
     const summarize = (l: NonNullable<typeof la>) => {
       const ageDays = Math.max(

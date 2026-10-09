@@ -66,6 +66,17 @@ CREATE TABLE IF NOT EXISTS tracked_shops (
 
 CREATE INDEX IF NOT EXISTS idx_listing_snapshots_at ON listing_snapshots(snapshot_at);
 CREATE INDEX IF NOT EXISTS idx_shop_snapshots_at ON shop_snapshots(snapshot_at);
+
+-- Contact form inbox (Phase 3A). Messages are stored locally only.
+-- There is NO email sending: forwarding needs Asad's SMTP config (see contact.ts).
+CREATE TABLE IF NOT EXISTS contact_messages (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  subject TEXT NOT NULL,
+  message TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);
 `;
 
 let db: DatabaseSync | undefined;

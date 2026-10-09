@@ -1,11 +1,23 @@
 import { describe, expect, it } from "vitest";
 import { buildServer } from "./index.js";
+import { adminCookie } from "./testutils.js";
+
+/** All /api/* routes now require a session — build + log in per test. */
+async function authedApp() {
+  const app = buildServer();
+  const cookie = await adminCookie(app);
+  return { app, headers: { cookie } };
+}
 
 describe("research routes (fixture mode)", () => {
   it("GET /api/listings/search returns rows with labeled view estimates", async () => {
-    const app = buildServer();
+    const { app, headers } = await authedApp();
     try {
-      const res = await app.inject({ method: "GET", url: "/api/listings/search?keyword=resume" });
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/listings/search?keyword=resume",
+        headers,
+      });
       expect(res.statusCode).toBe(200);
       const body = res.json();
       expect(body.mode).toBe("fixture");
@@ -21,9 +33,9 @@ describe("research routes (fixture mode)", () => {
   });
 
   it("GET /api/listings/search requires ?keyword=", async () => {
-    const app = buildServer();
+    const { app, headers } = await authedApp();
     try {
-      const res = await app.inject({ method: "GET", url: "/api/listings/search" });
+      const res = await app.inject({ method: "GET", url: "/api/listings/search", headers });
       expect(res.statusCode).toBe(400);
     } finally {
       await app.close();
@@ -31,9 +43,9 @@ describe("research routes (fixture mode)", () => {
   });
 
   it("GET /api/trend-buzz returns heat-ranked rows with levels", async () => {
-    const app = buildServer();
+    const { app, headers } = await authedApp();
     try {
-      const res = await app.inject({ method: "GET", url: "/api/trend-buzz" });
+      const res = await app.inject({ method: "GET", url: "/api/trend-buzz", headers });
       expect(res.statusCode).toBe(200);
       const body = res.json();
       expect(body.rows.length).toBeGreaterThan(0);
@@ -49,9 +61,13 @@ describe("research routes (fixture mode)", () => {
   });
 
   it("GET /api/competitors/top returns stats, tags and ranked listings", async () => {
-    const app = buildServer();
+    const { app, headers } = await authedApp();
     try {
-      const res = await app.inject({ method: "GET", url: "/api/competitors/top?keyword=resume" });
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/competitors/top?keyword=resume",
+        headers,
+      });
       expect(res.statusCode).toBe(200);
       const body = res.json();
       expect(body.stats.competitors).toBe(body.listings.length);
@@ -68,10 +84,13 @@ describe("research routes (fixture mode)", () => {
 
 describe("category report (fixture mode)", () => {
   it("GET /api/category-report returns stats, histogram, tags and top listings", async () => {
-    const { buildServer } = await import("./index.js");
-    const app = buildServer();
+    const { app, headers } = await authedApp();
     try {
-      const res = await app.inject({ method: "GET", url: "/api/category-report?keyword=resume" });
+      const res = await app.inject({
+        method: "GET",
+        url: "/api/category-report?keyword=resume",
+        headers,
+      });
       expect(res.statusCode).toBe(200);
       const body = res.json();
       expect(body.mode).toBe("fixture");

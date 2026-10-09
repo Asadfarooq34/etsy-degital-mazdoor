@@ -1,6 +1,10 @@
 import type { FastifyInstance } from "fastify";
 import type { EtsyClient } from "./etsy.js";
 import { geminiGenerate, geminiReady } from "./gemini.js";
+import { badGateway, capLength, validateAiListingShape } from "./validate.js";
+
+/** Max input length per field on AI endpoints (Gemini cost/abuse shield). */
+const MAX_INPUT = 2000;
 
 function badRequest(msg: string) {
   return Object.assign(new Error(msg), { statusCode: 400 });
@@ -21,6 +25,7 @@ export function registerAiRoutes(app: FastifyInstance, etsy: EtsyClient) {
     needKey();
     const { keyword = "" } = (req.body as { keyword?: string }) ?? {};
     if (!keyword.trim()) throw badRequest("keyword is required");
+    capLength(keyword.trim(), MAX_INPUT, "keyword");
 
     // Ground in real data: fetch top listings for context.
     let context = "";
@@ -54,6 +59,7 @@ Return ONLY the 10 titles, one per line, no numbering, no extra text.`;
     needKey();
     const { keyword = "" } = (req.body as { keyword?: string }) ?? {};
     if (!keyword.trim()) throw badRequest("keyword is required");
+    capLength(keyword.trim(), MAX_INPUT, "keyword");
 
     let context = "";
     try {
@@ -87,6 +93,10 @@ Return ONLY the 13 tags, one per line, no numbering, no extra text.`;
     const body = (req.body as Record<string, string>) ?? {};
     const keyword = (body["keyword"] ?? "").trim();
     if (!keyword) throw badRequest("keyword is required");
+    capLength(keyword, MAX_INPUT, "keyword");
+    for (const f of ["productName", "productType", "audience", "features"] as const) {
+      capLength((body[f] ?? "").trim(), MAX_INPUT, f);
+    }
 
     const prompt = `You are an Etsy SEO expert. Write 3 different Etsy listing descriptions for:
 - Focus keyword: ${keyword}
@@ -117,6 +127,8 @@ Separate the 3 versions with "---" on its own line. No extra commentary.`;
     const body = (req.body as Record<string, string>) ?? {};
     const product = (body["product"] ?? "").trim();
     if (!product) throw badRequest("product description is required");
+    capLength(product, MAX_INPUT, "product");
+    capLength((body["details"] ?? "").trim(), MAX_INPUT, "details");
 
     let context = "";
     try {
@@ -142,12 +154,15 @@ Return a JSON object (no markdown, no code fences) with exactly these keys:
 
     const text = await geminiGenerate(prompt);
     const cleaned = text.replace(/```json\n?|\n?```/g, "").trim();
-    const listing = JSON.parse(cleaned) as {
-      title: string;
-      tags: string[];
-      description: string;
-      suggestedPrice: number;
-    };
+    // C2: the model can return markdown fences, truncation, or a refusal —
+    // never let a SyntaxError become a 500. Malformed output = 502.
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(cleaned);
+    } catch {
+      throw badGateway("The AI returned malformed JSON — try again.");
+    }
+    const listing = validateAiListingShape(parsed);
     return { product, ...listing, grounded: context.length > 0 };
   });
 
@@ -157,6 +172,7 @@ Return a JSON object (no markdown, no code fences) with exactly these keys:
     needKey();
     const { summary = "" } = (req.body as { summary?: string }) ?? {};
     if (!summary.trim()) throw badRequest("summary is required");
+    capLength(summary.trim(), MAX_INPUT, "summary");
 
     const prompt = `You are an Etsy SEO expert. Below are REAL measured stats for an Etsy keyword (from Etsy's own API — competition count, views, favorites, prices are exact; KD is a labeled estimate).
 

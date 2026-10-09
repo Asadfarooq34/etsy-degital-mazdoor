@@ -24,12 +24,46 @@ import { registerToolRoutes } from "./tools.js";
 import { registerKeywordFullRoutes } from "./keyword-full.js";
 import { registerDiscoveryRoutes } from "./discovery.js";
 import { registerAiRoutes } from "./ai.js";
+import { registerContactRoutes } from "./contact.js";
 import { registerGoogleAdsRoutes } from "./google-ads-routes.js";
+import { authHook, getPasswordHash, registerAuthRoutes } from "./auth.js";
+import { createHttpLimiters, httpRateLimitHook } from "./httpRateLimit.js";
+import { validateFeeInput } from "./validate.js";
 
 const PORT = Number(process.env["PORT"] ?? 3001);
+const isProd = process.env["NODE_ENV"] === "production";
+
+const ERROR_LABELS: Record<number, string> = {
+  400: "Bad Request",
+  401: "Unauthorized",
+  404: "Not Found",
+  429: "Too Many Requests",
+  502: "Bad Gateway",
+  503: "Service Unavailable",
+};
 
 export function buildServer(): ReturnType<typeof Fastify> {
   const app = Fastify({ logger: true });
+  // Sanitized error responses: 4xx keep their message (we wrote it);
+  // 5xx never leak stack traces or raw upstream bodies in production.
+  app.setErrorHandler((err: Error & { statusCode?: unknown }, req, reply) => {
+    const raw = err.statusCode;
+    const status = typeof raw === "number" && raw >= 400 && raw < 600 ? raw : 500;
+    if (status >= 500) {
+      req.log.error(err);
+      void reply.code(status).send({
+        statusCode: status,
+        error: "Internal Server Error",
+        message: isProd ? "Something went wrong on the server." : err.message || "Internal Server Error",
+      });
+      return;
+    }
+    void reply.code(status).send({
+      statusCode: status,
+      error: ERROR_LABELS[status] ?? "Error",
+      message: err.message,
+    });
+  });
   // Crash-resistance: log instead of dying on unexpected errors.
   process.on("uncaughtException", (err) => {
     app.log.error({ err }, "[fatal] uncaught exception — server stays up");
@@ -47,7 +81,16 @@ export function buildServer(): ReturnType<typeof Fastify> {
       await reply.code(204).send();
     }
   });
+  // Security: auth gate + HTTP rate limits run before any route handler.
+  // (Hooks apply to routes registered after them — order matters.)
+  const limiters = createHttpLimiters();
+  app.addHook("onRequest", authHook);
+  app.addHook("onRequest", httpRateLimitHook(limiters));
+  registerAuthRoutes(app, { loginLimiter: limiters.login });
   const etsy = new EtsyClient();
+  if (!getPasswordHash()) {
+    app.log.warn("[auth] ADMIN_PASSWORD is not set — /api/auth/login will return 503 until it is configured.");
+  }
   console.log(
     `[api] Etsy mode=${etsy.effectiveMode} keyPresent=${!!process.env["ETSY_API_KEY"]} secretPresent=${!!process.env["ETSY_SHARED_SECRET"]} cwd=${process.cwd()}`,
   );
@@ -63,24 +106,14 @@ export function buildServer(): ReturnType<typeof Fastify> {
   registerKeywordFullRoutes(app, etsy);
   registerDiscoveryRoutes(app, etsy);
   registerAiRoutes(app, etsy);
+  registerContactRoutes(app);
   registerGoogleAdsRoutes(app);
 
+  // Public by design (monitoring). No diagnostics: keyLength/secretLength/cwd
+  // were removed — env issues are diagnosed server-side via startup logs.
   app.get("/health", async () => ({
     ok: true,
     etsy: etsy.effectiveMode,
-    degraded: etsy.degraded,
-    // diagnostics (no secret values): helps pinpoint env-loading issues
-    keyPresent: !!process.env["ETSY_API_KEY"],
-    keyLength: process.env["ETSY_API_KEY"]?.length ?? 0,
-    secretPresent: !!process.env["ETSY_SHARED_SECRET"],
-    secretLength: process.env["ETSY_SHARED_SECRET"]?.length ?? 0,
-    cwd: process.cwd(),
-    note:
-      etsy.mode === "fixture"
-        ? "ETSY_API_KEY not set — serving labeled fixture data until the key is approved"
-        : etsy.degraded
-          ? "key rejected by Etsy (not active yet?) — serving labeled fixture data"
-          : "live Etsy API",
   }));
 
   /** Keyword overview (PRD §5.1). Fixture until the key is active. */
@@ -121,9 +154,9 @@ export function buildServer(): ReturnType<typeof Fastify> {
     };
   });
 
-  /** Fee calculator (pure tool — no Etsy data needed). */
+  /** Fee calculator (pure tool — no Etsy data needed). Body validated → 400, never 500. */
   app.post("/api/tools/fee-calculator", async (req) => {
-    return calculateFees(req.body as Parameters<typeof calculateFees>[0]);
+    return calculateFees(validateFeeInput(req.body));
   });
 
   return app;

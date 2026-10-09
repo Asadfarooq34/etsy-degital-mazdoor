@@ -9,7 +9,7 @@ Runs on your own computer; API keys never leave this machine.
 | -------- | ------------------------------------------------- |
 | Monorepo | npm workspaces (`apps/*`, `packages/*`)            |
 | Web      | Vite + React + TypeScript (strict)                |
-| API      | Fastify + TypeScript (strict), SQLite (better-sqlite3) |
+| API      | Fastify + TypeScript (strict), SQLite (node:sqlite, built-in) |
 | Shared   | `@digital-mazdoor/core` — types + pure formulas   |
 | Tests    | Vitest (unit + integration)                       |
 
@@ -28,6 +28,11 @@ cp apps/api/.env.example apps/api/.env
 #   ETSY_SHARED_SECRET=<shared_secret>
 # (Etsy requires the x-api-key header as "keystring:shared_secret" — keystring
 #  alone is rejected with 403. Both stay in .env, never committed.)
+#
+# REQUIRED for login: set your personal admin password (plaintext or a bcrypt
+# hash of it — pre-hashed is preferred):
+#   ADMIN_PASSWORD=<redacted>   # generate a hash with:
+#   node -e "console.log(require('bcryptjs').hashSync('your-password', 12))"
 
 # 3. Run (two terminals, or one command each)
 npm run dev:api   # → http://127.0.0.1:3001
@@ -67,6 +72,7 @@ app/
 
 ## Status
 
-v0.1.0 scaffold — see `../PRD.md` §9 for the build roadmap.
+v0.2.0 — single-user password auth (ADMIN_PASSWORD), HTTP rate limiting,
+input validation, and a login-gated UI — see `../PRD.md` §9 for the build roadmap.
 Live Etsy data activates when the personal API key is approved (`ETSY_API_KEY` set);
 until then the API serves clearly-labeled fixture data.
