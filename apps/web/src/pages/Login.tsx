@@ -40,6 +40,7 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
         <p className="login-hint">
           This is your personal tool — enter your admin password to continue.
         </p>
+        <p className="login-beta">Private beta — single-admin access. No public registration.</p>
         <label className="login-label" htmlFor="dm-password">
           Password
         </label>

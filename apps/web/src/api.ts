@@ -1,6 +1,19 @@
-/** Typed client for the Digital Mazdoor API (same-origin; see vite.config.ts proxy). */
+/** Typed client for the Digital Mazdoor API. */
 
-const BASE = "";
+/**
+ * API base URL.
+ *
+ * - Dev (default): "" — relative URLs, served through the Vite dev proxy
+ *   (vite.config.ts forwards /api/* and /health to http://127.0.0.1:3001).
+ *   Relative is deliberate: the session cookie is SameSite=Strict, so the
+ *   web UI must talk to the API same-origin for the cookie to be attached.
+ * - Production: set VITE_API_URL to the API's public origin before building,
+ *   e.g. `VITE_API_URL=https://api.yourdomain.com npm run build`.
+ *   Prefer serving the SPA and the API from the same origin (or behind one
+ *   reverse proxy that unifies them) — a truly cross-origin API breaks the
+ *   Strict session cookie and login will silently fail.
+ */
+const BASE = (import.meta.env.VITE_API_URL ?? "").replace(/\/+$/, "");
 
 /** Extract a numeric listing ID from a raw ID or a full etsy.com/listing/… URL. */
 export function extractListingId(input: string): string {
@@ -52,6 +65,8 @@ async function req<T>(path: string, init?: RequestInit, timeoutMs = 90000): Prom
 export interface Health {
   ok: boolean;
   etsy: "live" | "fixture";
+  /** Optional status note; the API currently omits it (Overview falls back to "checking…"). */
+  note?: string;
 }
 
 export interface EstimatedValue {

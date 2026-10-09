@@ -1,5 +1,6 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type FormEvent, type MouseEvent, type ReactNode } from "react";
 import { Button, ErrorBoundary, Logo } from "./components";
+import Homepage from "./pages/Homepage";
 import Overview from "./pages/Overview";
 import Keywords from "./pages/Keywords";
 import Listings from "./pages/Listings";
@@ -33,6 +34,20 @@ import Privacy from "./pages/Privacy";
 import Terms from "./pages/Terms";
 import NotFound from "./pages/NotFound";
 import { api, setUnauthorizedHandler } from "./api";
+import { navigate, sanitizeNext, useRoute } from "./router";
+
+/* ------------------------------------------------------------------ */
+/* Route architecture (Phase 3E)                                       */
+/*                                                                     */
+/*  /                  → Homepage (public; authed → /dashboard)         */
+/*  /login             → Login (public; authed → /dashboard)            */
+/*  /privacy /terms /contact → public legal pages                      */
+/*  /dashboard/*       → protected app (unauth → /login?next=…)         */
+/*  *                  → NotFound (public)                             */
+/*                                                                     */
+/* Subdomain-aware: on app.* hostnames, "/" renders the Login screen   */
+/* directly (Asad's intended UX: app subdomain = auth entry point).     */
+/* ------------------------------------------------------------------ */
 
 type Page =
   | "login"
@@ -246,7 +261,7 @@ const ICONS: Record<Page, ReactNode> = {
   descgen: (
     <Icon>
       <path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z" />
-      <path d="M14 2v4a2 2 0 0 0 2 2h4" />
+      <path d="M14 2v4a2 2 0 0 2 2h4" />
       <path d="M10 9H8" />
       <path d="M16 13H8" />
       <path d="M16 17H8" />
@@ -353,67 +368,148 @@ const ICONS: Record<Page, ReactNode> = {
   ),
 };
 
-const NAV: { section: string; items: { id: Page; label: string; soon?: boolean }[] }[] = [
+interface NavItem {
+  id: Page;
+  label: string;
+  /** App path. Dashboard pages live under /dashboard/*; legal pages are public top-level routes. */
+  path?: string;
+  soon?: boolean;
+}
+
+const NAV: { section: string; items: NavItem[] }[] = [
   {
     section: "Home",
     items: [
-      { id: "overview", label: "Overview" },
-      { id: "myshop", label: "My Shop" },
-      { id: "notifications", label: "Notifications" },
+      { id: "overview", label: "Overview", path: "/dashboard" },
+      { id: "myshop", label: "My Shop", path: "/dashboard/my-shop" },
+      { id: "notifications", label: "Notifications", path: "/dashboard/notifications" },
     ],
   },
   {
     section: "Research",
     items: [
-      { id: "hotproducts", label: "Find Hot Products" },
-      { id: "keywords", label: "Keywords" },
-      { id: "listings", label: "Listings" },
-      { id: "competitors", label: "Competitors" },
-      { id: "trends", label: "Trends" },
-      { id: "buzz", label: "Trend Buzz" },
-      { id: "mtrends", label: "Monthly Trends" },
-      { id: "topsellers", label: "Top Sellers" },
-      { id: "category", label: "Category Report" },
-      { id: "sales", label: "Competitor Sales" },
-      { id: "gap", label: "Keyword Gap" },
-      { id: "bulk", label: "Bulk Keywords" },
-      { id: "rank", label: "Rank Checker" },
-      { id: "alerts", label: "Alerts" },
+      { id: "hotproducts", label: "Find Hot Products", path: "/dashboard/hot-products" },
+      { id: "keywords", label: "Keywords", path: "/dashboard/keywords" },
+      { id: "listings", label: "Listings", path: "/dashboard/listings" },
+      { id: "competitors", label: "Competitors", path: "/dashboard/competitors" },
+      { id: "trends", label: "Trends", path: "/dashboard/trends" },
+      { id: "buzz", label: "Trend Buzz", path: "/dashboard/trend-buzz" },
+      { id: "mtrends", label: "Monthly Trends", path: "/dashboard/monthly-trends" },
+      { id: "topsellers", label: "Top Sellers", path: "/dashboard/top-sellers" },
+      { id: "category", label: "Category Report", path: "/dashboard/category-report" },
+      { id: "sales", label: "Competitor Sales", path: "/dashboard/competitor-sales" },
+      { id: "gap", label: "Keyword Gap", path: "/dashboard/keyword-gap" },
+      { id: "bulk", label: "Bulk Keywords", path: "/dashboard/bulk-keywords" },
+      { id: "rank", label: "Rank Checker", path: "/dashboard/rank-checker" },
+      { id: "alerts", label: "Alerts", path: "/dashboard/alerts" },
     ],
   },
   {
     section: "Optimize",
     items: [
-      { id: "shopanalytics", label: "Shop Analytics" },
-      { id: "tagopt", label: "Tag Optimizer" },
-      { id: "titlegen", label: "Title Generator" },
-      { id: "taggen", label: "Tag Generator" },
-      { id: "descgen", label: "Description Generator" },
-      { id: "listingpro", label: "Etsy Listing Pro" },
+      { id: "shopanalytics", label: "Shop Analytics", path: "/dashboard/shop-analytics" },
+      { id: "tagopt", label: "Tag Optimizer", path: "/dashboard/tag-optimizer" },
+      { id: "titlegen", label: "Title Generator", path: "/dashboard/title-generator" },
+      { id: "taggen", label: "Tag Generator", path: "/dashboard/tag-generator" },
+      { id: "descgen", label: "Description Generator", path: "/dashboard/description-generator" },
+      { id: "listingpro", label: "Etsy Listing Pro", path: "/dashboard/etsy-listing-pro" },
       { id: "automate", label: "Automate Listing", soon: true },
-      { id: "aihelper", label: "AI Listing Helper" },
-      { id: "listingaudit", label: "Listing Audit" },
-      { id: "competitortags", label: "Competitor Tags" },
-      { id: "comparelistings", label: "Compare Listings" },
-      { id: "spellcheck", label: "Spell Checker" },
+      { id: "aihelper", label: "AI Listing Helper", path: "/dashboard/ai-listing-helper" },
+      { id: "listingaudit", label: "Listing Audit", path: "/dashboard/listing-audit" },
+      { id: "competitortags", label: "Competitor Tags", path: "/dashboard/competitor-tags" },
+      { id: "comparelistings", label: "Compare Listings", path: "/dashboard/compare-listings" },
+      { id: "spellcheck", label: "Spell Checker", path: "/dashboard/spell-checker" },
     ],
   },
   {
     section: "Tools",
     items: [
-      { id: "fees", label: "Fee Calculator" },
-      { id: "tools", label: "More Tools" },
+      { id: "fees", label: "Fee Calculator", path: "/dashboard/fee-calculator" },
+      { id: "tools", label: "More Tools", path: "/dashboard/more-tools" },
     ],
   },
   {
     section: "Legal",
     items: [
-      { id: "contact", label: "Contact Us" },
-      { id: "privacy", label: "Privacy Policy" },
-      { id: "terms", label: "Terms of Service" },
+      { id: "contact", label: "Contact Us", path: "/contact" },
+      { id: "privacy", label: "Privacy Policy", path: "/privacy" },
+      { id: "terms", label: "Terms of Service", path: "/terms" },
     ],
   },
 ];
+
+/** Dashboard path → page id (only /dashboard/* entries). */
+const PAGE_BY_DASHBOARD_PATH = new Map<string, Page>();
+/** Page id → app path (dashboard + public). */
+const PATH_BY_ID = new Map<Page, string>();
+/** Page id → nav section (for breadcrumbs). */
+const SECTION_BY_ID = new Map<Page, string>();
+for (const group of NAV) {
+  for (const item of group.items) {
+    SECTION_BY_ID.set(item.id, group.section);
+    if (item.path) {
+      PATH_BY_ID.set(item.id, item.path);
+      if (item.path === "/dashboard" || item.path.startsWith("/dashboard/")) {
+        PAGE_BY_DASHBOARD_PATH.set(item.path, item.id);
+      }
+    }
+  }
+}
+
+/** Anchor that navigates client-side (modifier-click / middle-click still open normally). */
+function Link({
+  to,
+  className,
+  title,
+  ariaLabel,
+  children,
+}: {
+  to: string;
+  className?: string;
+  title?: string;
+  ariaLabel?: string;
+  children: ReactNode;
+}) {
+  const onClick = (e: MouseEvent<HTMLAnchorElement>) => {
+    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+    e.preventDefault();
+    navigate(to);
+  };
+  return (
+    <a href={to} className={className} title={title} aria-label={ariaLabel} onClick={onClick}>
+      {children}
+    </a>
+  );
+}
+
+/** Effect-based redirect (avoids side effects during render, StrictMode-safe). */
+function Redirect({ to }: { to: string }) {
+  useEffect(() => {
+    navigate(to);
+  }, [to]);
+  return null;
+}
+
+/** Login route wrapper: honors a validated ?next= redirect after success. */
+function LoginRoute({ onLogin }: { onLogin: (dest: string) => void }) {
+  const { search } = useRoute();
+  const dest = sanitizeNext(search.get("next")) ?? "/dashboard";
+  return <Login onSuccess={() => onLogin(dest)} />;
+}
+
+/** Minimal chrome for public legal pages (bare components, no dashboard shell). */
+function PublicShell({ children }: { children: ReactNode }) {
+  return (
+    <div className="public-wrap">
+      <div className="public-inner">
+        <Link to="/" className="public-back">
+          ← Digital Mazdoor home
+        </Link>
+        {children}
+      </div>
+    </div>
+  );
+}
 
 function ApiStatus() {
   const [live, setLive] = useState<boolean | null>(null);
@@ -438,87 +534,56 @@ function ApiStatus() {
   );
 }
 
-export default function App() {
-  const [page, setPage] = useState<Page>("overview");
+/* ------------------------------------------------------------------ */
+/* Dashboard shell: collapsible sidebar + top bar + breadcrumbs        */
+/* ------------------------------------------------------------------ */
+
+const SIDEBAR_COLLAPSED_KEY = "dm:sidebar-collapsed";
+
+function DashboardShell({
+  page,
+  search,
+  unread,
+  onSignOut,
+}: {
+  /** Resolved dashboard page, or null for an unknown /dashboard/* slug. */
+  page: Page | null;
+  search: URLSearchParams;
+  unread: number;
+  onSignOut: () => void;
+}) {
   const [navOpen, setNavOpen] = useState(false);
-  // null = still checking the session; false = show the login gate only.
-  const [authed, setAuthed] = useState<boolean | null>(null);
-  // Unread keyword-alert count for the Notifications nav badge (gap #9).
-  const [unread, setUnread] = useState(0);
+  const [collapsed, setCollapsed] = useState<boolean>(
+    () => localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1",
+  );
+  const [query, setQuery] = useState("");
+  const [accountOpen, setAccountOpen] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-    api
-      .authStatus()
-      .then((s) => {
-        if (!cancelled) setAuthed(s.authenticated);
-      })
-      .catch(() => {
-        if (!cancelled) setAuthed(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Any API 401 (expired session, signed out elsewhere) drops back to login.
-  useEffect(() => {
-    setUnauthorizedHandler(() => {
-      setAuthed(false);
-      setPage("login");
+  const toggleCollapsed = () => {
+    setCollapsed((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem(SIDEBAR_COLLAPSED_KEY, next ? "1" : "0");
+      } catch {
+        /* private mode — collapse just won't persist */
+      }
+      return next;
     });
-  }, []);
-
-  // Refresh the Notifications nav badge. Re-runs on every page change so the
-  // count stays fresh after alerts are marked read on the Notifications page.
-  useEffect(() => {
-    let cancelled = false;
-    api
-      .alertsList()
-      .then((r) => {
-        if (!cancelled) setUnread(r.unreadCount);
-      })
-      .catch(() => {
-        if (!cancelled) setUnread(0);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [page]);
-
-  const go = (id: Page) => {
-    setPage(id);
-    setNavOpen(false);
   };
 
-  const signOut = async () => {
-    try {
-      await api.logout();
-    } catch {
-      /* session already gone — still drop to the gate */
-    }
-    setAuthed(false);
-    setPage("login");
+  const submitSearch = (e: FormEvent) => {
+    e.preventDefault();
+    const q = query.trim();
+    if (!q) return;
+    setQuery("");
+    navigate(`/dashboard/keywords?q=${encodeURIComponent(q)}`);
   };
 
-  if (authed === null) {
-    return <div className="login-checking">Checking session…</div>;
-  }
-  // Login gate: when not authenticated, render ONLY the login page —
-  // no sidebar, no nav, no data.
-  if (!authed || page === "login") {
-    return (
-      <Login
-        onSuccess={() => {
-          setAuthed(true);
-          setPage("overview");
-        }}
-      />
-    );
-  }
+  const section = page ? SECTION_BY_ID.get(page) : undefined;
+  const label = page ? NAV.flatMap((g) => g.items).find((i) => i.id === page)?.label : undefined;
 
   return (
-    <div className="app">
+    <div className={`app ${collapsed ? "sidebar-collapsed" : ""}`}>
       <button
         className="nav-toggle"
         aria-label={navOpen ? "Close navigation" : "Open navigation"}
@@ -532,7 +597,7 @@ export default function App() {
         onClick={() => setNavOpen(false)}
         aria-hidden="true"
       />
-      <aside className={`sidebar ${navOpen ? "open" : ""}`}>
+      <aside className={`sidebar ${navOpen ? "open" : ""} ${collapsed ? "collapsed" : ""}`}>
         <div className="brand">
           <div className="brand-mark-logo">
             <Logo size={38} />
@@ -541,6 +606,15 @@ export default function App() {
             <div className="brand-name">Digital Mazdoor</div>
             <div className="brand-sub">Etsy research toolkit</div>
           </div>
+          <button
+            className="collapse-btn"
+            onClick={toggleCollapsed}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            aria-expanded={!collapsed}
+          >
+            {collapsed ? "»" : "«"}
+          </button>
         </div>
 
         <nav className="nav-scroll">
@@ -549,13 +623,19 @@ export default function App() {
               <div className="nav-section">{group.section}</div>
               {group.items.map((item) => {
                 const active = page === item.id && !item.soon;
+                const title = collapsed ? item.label : undefined;
                 return (
                   <button
                     key={item.id}
                     className={`nav-item ${active ? "active" : ""}`}
-                    onClick={() => !item.soon && go(item.id)}
+                    onClick={() => {
+                      if (item.soon || !item.path) return;
+                      navigate(item.path);
+                      setNavOpen(false);
+                    }}
                     disabled={item.soon}
                     aria-current={active ? "page" : undefined}
+                    title={title}
                   >
                     {ICONS[item.id]}
                     <span className="nav-label">{item.label}</span>
@@ -573,17 +653,102 @@ export default function App() {
         <div className="sidebar-foot">
           <ApiStatus />
           <span className="foot-version">v0.3.0 · local-only</span>
-          <button className="foot-signout" onClick={signOut} title="Sign out">
+          <button className="foot-signout" onClick={onSignOut} title="Sign out">
             Sign out
           </button>
         </div>
       </aside>
 
       <main className="main">
+        <header className="topbar">
+          <div className="topbar-title">{label ?? "Dashboard"}</div>
+          <form className="topbar-search" onSubmit={submitSearch} role="search">
+            <input
+              className="input topbar-search-input"
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search keywords…"
+              aria-label="Global keyword search"
+            />
+          </form>
+          <Link
+            to="/dashboard/notifications"
+            className="topbar-bell"
+            ariaLabel={`Notifications${unread > 0 ? `, ${unread} unread` : ""}`}
+            title="Notifications"
+          >
+            <span aria-hidden="true">🔔</span>
+            {unread > 0 && <span className="topbar-badge">{unread}</span>}
+          </Link>
+          <div className="account-menu">
+            <button
+              className="account-btn"
+              onClick={() => setAccountOpen((v) => !v)}
+              aria-haspopup="menu"
+              aria-expanded={accountOpen}
+              title="Account"
+            >
+              <span className="account-avatar" aria-hidden="true">
+                A
+              </span>
+              <span className="account-name">Admin</span>
+              <span aria-hidden="true" className="account-caret">
+                ▾
+              </span>
+            </button>
+            {accountOpen && (
+              <>
+                <div
+                  className="account-scrim"
+                  onClick={() => setAccountOpen(false)}
+                  aria-hidden="true"
+                />
+                <div className="account-dropdown" role="menu">
+                  <div className="account-dropdown-head">
+                    <div className="account-dropdown-name">Admin</div>
+                    <div className="account-dropdown-sub">Single-admin access</div>
+                  </div>
+                  <button
+                    className="account-signout"
+                    role="menuitem"
+                    onClick={() => {
+                      setAccountOpen(false);
+                      onSignOut();
+                    }}
+                  >
+                    Sign out
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </header>
+
+        <nav className="breadcrumbs" aria-label="Breadcrumb">
+          <Link to="/dashboard">Dashboard</Link>
+          {section && (
+            <>
+              <span className="crumb-sep" aria-hidden="true">
+                /
+              </span>
+              <span>{section}</span>
+            </>
+          )}
+          {label && (
+            <>
+              <span className="crumb-sep" aria-hidden="true">
+                /
+              </span>
+              <span aria-current="page">{label}</span>
+            </>
+          )}
+        </nav>
+
         {/* Global error boundary (audit M12): one broken page can no longer
-            unmount the whole app. key={page} resets it on navigation. */}
+            unmount the whole app. key resets it on navigation. */}
         <ErrorBoundary
-          key={page}
+          key={window.location.pathname + window.location.search}
           fallback={({ reset }) => (
             <div className="card">
               <div className="error-state">
@@ -598,48 +763,238 @@ export default function App() {
                   <Button variant="secondary" onClick={reset}>
                     Try again
                   </Button>
-                  <Button onClick={() => go("overview")}>Back to Overview</Button>
+                  <Button onClick={() => navigate("/dashboard")}>Back to Overview</Button>
                 </div>
               </div>
             </div>
           )}
         >
-          {page === "overview" && <Overview go={(p) => go(p as Page)} />}
-          {page === "myshop" && <MyShop />}
-        {page === "notifications" && <Notifications />}
-        {page === "keywords" && <Keywords />}
-        {page === "listings" && <Listings />}
-        {page === "buzz" && <TrendBuzz />}
-        {page === "competitors" && <Competitors />}
-        {page === "category" && <CategoryReport />}
-        {page === "gap" && <KeywordGap />}
-        {page === "bulk" && <BulkKeywords />}
-        {page === "rank" && <RankChecker />}
-        {page === "trends" && <Trends />}
-        {page === "mtrends" && <MonthlyTrends />}
-        {page === "sales" && <CompetitorSales />}
-        {page === "topsellers" && <TopSellers />}
-        {page === "tagopt" && <TagOptimizer />}
-        {page === "hotproducts" && <HotProducts />}
-        {page === "listingaudit" && <ListingAudit />}
-        {page === "competitortags" && <CompetitorTags />}
-        {page === "comparelistings" && <CompareListings />}
-        {page === "spellcheck" && <SpellChecker />}
-        {page === "shopanalytics" && <ShopAnalytics />}
-        {page === "titlegen" && <TitleGenerator />}
-        {page === "taggen" && <TagGenerator />}
-        {page === "descgen" && <DescriptionGenerator />}
-        {page === "listingpro" && <EtsyListingPro />}
-        {page === "aihelper" && <AIListingHelper />}
-        {page === "alerts" && <Alerts />}
-        {page === "tools" && <MoreTools />}
-        {page === "fees" && <FeeCalculator />}
-        {page === "contact" && <Contact go={(p) => go(p)} />}
-        {page === "privacy" && <Privacy />}
-        {page === "terms" && <Terms />}
-        {page === "notfound" && <NotFound onHome={() => go("overview")} />}
+          {page === null ? (
+            <NotFound onHome={() => navigate("/dashboard")} />
+          ) : (
+            <DashboardPage page={page} search={search} />
+          )}
         </ErrorBoundary>
       </main>
     </div>
+  );
+}
+
+/** Maps a dashboard page id to its component (all 30 tool pages preserved). */
+function DashboardPage({ page, search }: { page: Page; search: URLSearchParams }) {
+  // Overview's quick links still speak legacy page ids — translate to routes.
+  const goLegacy = (id: string) => {
+    const path = PATH_BY_ID.get(id as Page);
+    if (path) navigate(path);
+  };
+  switch (page) {
+    case "overview":
+      return <Overview go={goLegacy} />;
+    case "myshop":
+      return <MyShop />;
+    case "notifications":
+      return <Notifications />;
+    case "keywords":
+      return (
+        <Keywords
+          key={search.get("q") ?? ""}
+          initialQuery={search.get("q") ?? ""}
+        />
+      );
+    case "listings":
+      return <Listings />;
+    case "buzz":
+      return <TrendBuzz />;
+    case "competitors":
+      return <Competitors />;
+    case "category":
+      return <CategoryReport />;
+    case "gap":
+      return <KeywordGap />;
+    case "bulk":
+      return <BulkKeywords />;
+    case "rank":
+      return <RankChecker />;
+    case "trends":
+      return <Trends />;
+    case "mtrends":
+      return <MonthlyTrends />;
+    case "sales":
+      return <CompetitorSales />;
+    case "topsellers":
+      return <TopSellers />;
+    case "tagopt":
+      return <TagOptimizer />;
+    case "hotproducts":
+      return <HotProducts />;
+    case "listingaudit":
+      return <ListingAudit />;
+    case "competitortags":
+      return <CompetitorTags />;
+    case "comparelistings":
+      return <CompareListings />;
+    case "spellcheck":
+      return <SpellChecker />;
+    case "shopanalytics":
+      return <ShopAnalytics />;
+    case "titlegen":
+      return <TitleGenerator />;
+    case "taggen":
+      return <TagGenerator />;
+    case "descgen":
+      return <DescriptionGenerator />;
+    case "listingpro":
+      return <EtsyListingPro />;
+    case "aihelper":
+      return <AIListingHelper />;
+    case "alerts":
+      return <Alerts />;
+    case "tools":
+      return <MoreTools />;
+    case "fees":
+      return <FeeCalculator />;
+    default:
+      return <NotFound onHome={() => navigate("/dashboard")} />;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* App: public vs protected route table                                */
+/* ------------------------------------------------------------------ */
+
+export default function App() {
+  const { path, search } = useRoute();
+  // null = still checking the session; false = unauthenticated.
+  const [authed, setAuthed] = useState<boolean | null>(null);
+  // Unread keyword-alert count for the Notifications badge (gap #9).
+  const [unread, setUnread] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .authStatus()
+      .then((s) => {
+        if (!cancelled) setAuthed(s.authenticated);
+      })
+      .catch(() => {
+        if (!cancelled) setAuthed(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Any API 401 (expired session, signed out elsewhere) drops back to login,
+  // remembering where the user was so they land back after signing in.
+  useEffect(() => {
+    setUnauthorizedHandler(() => {
+      setAuthed(false);
+      setUnread(0);
+      const here = window.location.pathname + window.location.search;
+      navigate(`/login?next=${encodeURIComponent(here)}`);
+    });
+  }, []);
+
+  // Refresh the Notifications badge. Re-runs on every route change so the
+  // count stays fresh after alerts are marked read on the Notifications page.
+  // (Badge is cleared in the sign-out paths below — public routes never fetch.)
+  useEffect(() => {
+    if (!authed) return;
+    let cancelled = false;
+    api
+      .alertsList()
+      .then((r) => {
+        if (!cancelled) setUnread(r.unreadCount);
+      })
+      .catch(() => {
+        if (!cancelled) setUnread(0);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [path, authed]);
+
+  const handleLogin = (dest: string) => {
+    setAuthed(true);
+    navigate(dest);
+  };
+
+  const signOut = async () => {
+    try {
+      await api.logout();
+    } catch {
+      /* session already gone — still drop to the public site */
+    }
+    setAuthed(false);
+    setUnread(0);
+    navigate("/");
+  };
+
+  if (authed === null) {
+    return <div className="login-checking">Checking session…</div>;
+  }
+
+  // Normalize: strip trailing slashes ("/dashboard/" ≡ "/dashboard").
+  const normPath = path.length > 1 ? path.replace(/\/+$/, "") : path;
+
+  /* --- Public routes --- */
+
+  if (normPath === "/") {
+    if (authed) return <Redirect to="/dashboard" />;
+    // app.* subdomain = auth entry point: show Login directly (per the
+    // domain architecture assessment); apex domain shows the marketing page.
+    if (window.location.hostname.startsWith("app.")) {
+      return <LoginRoute onLogin={handleLogin} />;
+    }
+    return <Homepage />;
+  }
+
+  if (normPath === "/login") {
+    if (authed) return <Redirect to="/dashboard" />;
+    return <LoginRoute onLogin={handleLogin} />;
+  }
+
+  if (normPath === "/privacy") {
+    return (
+      <PublicShell>
+        <Privacy />
+      </PublicShell>
+    );
+  }
+  if (normPath === "/terms") {
+    return (
+      <PublicShell>
+        <Terms />
+      </PublicShell>
+    );
+  }
+  if (normPath === "/contact") {
+    return (
+      <PublicShell>
+        <Contact go={(p) => navigate(`/${p}`)} />
+      </PublicShell>
+    );
+  }
+
+  /* --- Protected routes: everything under /dashboard/* --- */
+
+  if (normPath === "/dashboard" || normPath.startsWith("/dashboard/")) {
+    if (!authed) {
+      const here = path + window.location.search;
+      return <Redirect to={`/login?next=${encodeURIComponent(here)}`} />;
+    }
+    const page: Page | null =
+      normPath === "/dashboard" ? "overview" : (PAGE_BY_DASHBOARD_PATH.get(normPath) ?? null);
+    return (
+      <DashboardShell page={page} search={search} unread={unread} onSignOut={signOut} />
+    );
+  }
+
+  /* --- Catch-all: public 404 --- */
+
+  return (
+    <PublicShell>
+      <NotFound onHome={() => navigate("/")} />
+    </PublicShell>
   );
 }
