@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, type FeeResult } from "../api";
+import { EmptyState, ErrorState, PageHeader } from "../components";
 
 type Country = "US" | "UK" | "CA" | "DE" | "OTHER";
 
@@ -33,11 +34,10 @@ export default function FeeCalculator() {
 
   return (
     <div>
-      <h1 className="page-title">Fee Calculator</h1>
-      <p className="page-sub">
-        Etsy's fees on a sale — computed locally, no API needed. Figures are approximate;
-        re-verify against Etsy's current fee schedule before relying on them.
-      </p>
+      <PageHeader
+        title="Fee Calculator"
+        sub="Etsy's fees on a sale — computed locally, no API needed. Figures are approximate; re-verify against Etsy's current fee schedule before relying on them."
+      />
 
       <div className="grid-2">
         <div className="card">
@@ -93,7 +93,7 @@ export default function FeeCalculator() {
 
         <div className="card">
           <h3>Breakdown</h3>
-          {error && <div className="error">{error}</div>}
+          {error && <ErrorState message={error} onRetry={() => void calc()} />}
           {result ? (
             <table className="table">
               <tbody>
@@ -132,7 +132,13 @@ export default function FeeCalculator() {
               </tbody>
             </table>
           ) : (
-            <div className="empty">Enter sale details and hit Calculate.</div>
+            !error && (
+              <EmptyState
+                icon="🧮"
+                title="No calculation yet"
+                hint="Enter sale details and hit Calculate — the fee breakdown appears here."
+              />
+            )
           )}
         </div>
       </div>

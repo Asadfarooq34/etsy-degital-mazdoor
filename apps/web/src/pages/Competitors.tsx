@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, type CompetitorsTop, type EstimatedValue, type ListingRow } from "../api";
+import { ErrorState, LoadingButton, ModeBadge, PageHeader } from "../components";
 
 function viewsNum(v: number | EstimatedValue): number {
   return typeof v === "number" ? v : v.value;
@@ -95,10 +96,11 @@ export default function Competitors() {
 
   return (
     <div>
-      <h1 className="page-title">Competitors</h1>
-      <p className="page-sub">
-        Top listings by views for a keyword — who you&apos;re up against, and the tags they rely on.
-      </p>
+      <PageHeader
+        title="Competitors"
+        sub="Top listings by views for a keyword — who you're up against, and the tags they rely on."
+        badge={result && <ModeBadge mode={result.mode} />}
+      />
 
       <div className="card">
         <div className="row">
@@ -113,13 +115,19 @@ export default function Competitors() {
               onKeyDown={(e) => e.key === "Enter" && void analyze()}
             />
           </div>
-          <button className="btn btn-purple" onClick={() => void analyze()} disabled={loading}>
-            {loading ? "Analyzing…" : "Analyze →"}
-          </button>
+          <LoadingButton
+            className="btn btn-purple"
+            onClick={() => void analyze()}
+            loading={loading}
+          >
+            Analyze →
+          </LoadingButton>
         </div>
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && (
+        <ErrorState message={error} onRetry={() => void analyze()} retryLabel="Analyze again" />
+      )}
 
       {result && (
         <>
@@ -141,11 +149,7 @@ export default function Competitors() {
               <div className="stat-label">Unique shops</div>
               <div className="stat-value">{result.stats.uniqueShops}</div>
               <div className="stat-note">
-                {result.mode === "fixture" ? (
-                  <span className="badge badge-fixture">FIXTURE</span>
-                ) : (
-                  <span className="badge badge-live">LIVE</span>
-                )}
+                <ModeBadge mode={result.mode} />
               </div>
             </div>
           </div>

@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api, type CompetitorTagsResult } from "../api";
-import { ModeBadge, PageHeader } from "../components";
+import { EmptyState, ErrorState, ModeBadge, PageHeader, TableSkeleton } from "../components";
 
 export default function CompetitorTags() {
   const [mode, setMode] = useState<"keyword" | "shop">("shop");
@@ -83,56 +83,67 @@ export default function CompetitorTags() {
         </p>
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && <ErrorState message={error} onRetry={() => void analyze()} />}
 
-      {result && (
+      {loading && result === null && (
         <div className="card">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Tag</th>
-                <th>Listings</th>
-                <th>Adoption</th>
-                <th>Avg favs</th>
-              </tr>
-            </thead>
-            <tbody>
-              {result.tags.map((t) => (
-                <tr key={t.tag}>
-                  <td>
-                    <span className="badge badge-est">{t.tag}</span>
-                  </td>
-                  <td>{t.listings}</td>
-                  <td>
-                    <div
-                      style={{
-                        background: "#ede9fe",
-                        borderRadius: 8,
-                        height: 10,
-                        width: 120,
-                        display: "inline-block",
-                        verticalAlign: "middle",
-                        marginRight: 8,
-                      }}
-                    >
+          <TableSkeleton rows={6} cols={4} />
+        </div>
+      )}
+
+      {result && !loading && (
+        <div className="card">
+          {result.tags.length === 0 ? (
+            <EmptyState
+              icon="🏷️"
+              title="No tags found"
+              hint="No tags found in the top listings sample — try a different shop or keyword."
+            />
+          ) : (
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Tag</th>
+                  <th>Listings</th>
+                  <th>Adoption</th>
+                  <th>Avg favs</th>
+                </tr>
+              </thead>
+              <tbody>
+                {result.tags.map((t) => (
+                  <tr key={t.tag}>
+                    <td>
+                      <span className="badge badge-est">{t.tag}</span>
+                    </td>
+                    <td>{t.listings}</td>
+                    <td>
                       <div
                         style={{
-                          background: "#7c3aed",
+                          background: "#ede9fe",
                           borderRadius: 8,
                           height: 10,
-                          width: `${(t.listings / maxListings) * 100}%`,
+                          width: 120,
+                          display: "inline-block",
+                          verticalAlign: "middle",
+                          marginRight: 8,
                         }}
-                      />
-                    </div>
-                    {t.pct}%
-                  </td>
-                  <td>{t.avgFavs}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {result.tags.length === 0 && (
-            <p className="stat-note">No tags found in the top listings sample.</p>
+                      >
+                        <div
+                          style={{
+                            background: "#7c3aed",
+                            borderRadius: 8,
+                            height: 10,
+                            width: `${(t.listings / maxListings) * 100}%`,
+                          }}
+                        />
+                      </div>
+                      {t.pct}%
+                    </td>
+                    <td>{t.avgFavs}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
       )}

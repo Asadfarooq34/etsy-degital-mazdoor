@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { api, type KeywordGap } from "../api";
+import { EmptyState, ErrorState, ModeBadge, PageHeader, TableSkeleton } from "../components";
 
 function termList(terms: { term: string; count: number }[], emptyText: string) {
   if (terms.length === 0) return <p className="stat-note">{emptyText}</p>;
@@ -35,12 +36,16 @@ export default function KeywordGapPage() {
     }
   };
 
+  const nothingFound =
+    result != null && result.topTags.length === 0 && result.topTitleWords.length === 0;
+
   return (
     <div>
-      <h1 className="page-title">Keyword Gap</h1>
-      <p className="page-sub">
-        The exact tags and title words top listings use — and what your listing is missing.
-      </p>
+      <PageHeader
+        title="Keyword Gap"
+        sub="The exact tags and title words top listings use — and what your listing is missing."
+        badge={result && <ModeBadge mode={result.mode} />}
+      />
 
       <div className="card">
         <div className="row">
@@ -72,17 +77,18 @@ export default function KeywordGapPage() {
         </div>
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && <ErrorState message={error} onRetry={() => void analyze()} />}
 
-      {result && (
+      {loading && !result && (
+        <div className="card">
+          <TableSkeleton rows={5} cols={3} />
+        </div>
+      )}
+
+      {result && !loading && (
         <div>
           <h2>
             &ldquo;{result.keyword}&rdquo;{" "}
-            {result.mode === "fixture" ? (
-              <span className="badge badge-fixture">FIXTURE DATA</span>
-            ) : (
-              <span className="badge badge-live">LIVE</span>
-            )}{" "}
             <span className="stat-note">top {result.sampleSize} listings</span>
           </h2>
 
@@ -107,15 +113,25 @@ export default function KeywordGapPage() {
             </div>
           )}
 
-          <div className="card">
-            <h3>Top tags by adoption</h3>
-            {termList(result.topTags, "No tags found.")}
-          </div>
+          {nothingFound ? (
+            <EmptyState
+              icon="🔍"
+              title="No tag data found"
+              hint="The top-listings sample came back empty — try a different keyword or widen your search."
+            />
+          ) : (
+            <>
+              <div className="card">
+                <h3>Top tags by adoption</h3>
+                {termList(result.topTags, "No tags found.")}
+              </div>
 
-          <div className="card">
-            <h3>Top title words by adoption</h3>
-            {termList(result.topTitleWords, "No title words found.")}
-          </div>
+              <div className="card">
+                <h3>Top title words by adoption</h3>
+                {termList(result.topTitleWords, "No title words found.")}
+              </div>
+            </>
+          )}
         </div>
       )}
     </div>

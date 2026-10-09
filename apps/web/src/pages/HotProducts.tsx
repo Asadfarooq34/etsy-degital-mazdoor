@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { api, type HotProductsResult } from "../api";
-import { ModeBadge, PageHeader } from "../components";
+import { EmptyState, ErrorState, ModeBadge, PageHeader, TableSkeleton } from "../components";
 
 const RELEASED = [
   { id: "30", label: "30 Days" },
@@ -100,7 +100,7 @@ export default function HotProducts() {
                     padding: "10px 12px",
                     border: "1px solid var(--border)",
                     borderRadius: "var(--radius)",
-                    background: released === r.id ? "#dc2626" : "#fff",
+                    background: released === r.id ? "var(--dm-danger-600)" : "#fff",
                     color: released === r.id ? "#fff" : "var(--ink-900)",
                     fontFamily: "var(--font)",
                     fontSize: 13,
@@ -113,62 +113,70 @@ export default function HotProducts() {
               ))}
             </div>
           </div>
-          <button className="btn btn-ghost" onClick={() => void search()} disabled={loading}>
-            Apply
-          </button>
         </div>
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && <ErrorState message={error} onRetry={() => void search()} />}
 
-      {result && (
+      {loading && result === null && (
+        <div className="card">
+          <TableSkeleton rows={4} cols={4} />
+        </div>
+      )}
+
+      {result && !loading && (
         <div className="card">
           <p className="stat-note" style={{ marginBottom: 12 }}>
             {result.note}
           </p>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
-              gap: 12,
-            }}
-          >
-            {result.products.map((p) => (
-              <div key={p.listingId} className="card" style={{ margin: 0 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                  <span
-                    className={`badge ${p.hotScore >= 60 ? "badge-pass" : p.hotScore >= 30 ? "badge-est" : "badge-fixture"}`}
+          {result.products.length === 0 ? (
+            <EmptyState
+              icon="🔥"
+              title="No products match these filters"
+              hint="Try widening the price range or favorites threshold."
+            />
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))",
+                gap: 12,
+              }}
+            >
+              {result.products.map((p) => (
+                <div key={p.listingId} className="card" style={{ margin: 0 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                    <span
+                      className={`badge ${p.hotScore >= 60 ? "badge-pass" : p.hotScore >= 30 ? "badge-est" : "badge-fixture"}`}
+                    >
+                      🔥 {p.hotScore}
+                    </span>
+                    <strong>${p.price.amount.toFixed(2)}</strong>
+                  </div>
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>{p.title}</div>
+                  <div className="stat-note">{p.shopName}</div>
+                  <div className="stat-note" style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
+                    <span>{p.numFavorers} favs</span>
+                    <span>{p.favsPerDay}/day</span>
+                    <span>{p.ageDays}d old</span>
+                  </div>
+                  <div className="stat-note" style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span>{p.favsPerView}% favs/view</span>
+                    <span>
+                      ~{p.salesPerMonth}/mo <span className="badge badge-est">est.</span>
+                    </span>
+                  </div>
+                  <a
+                    href={p.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: "var(--purple-700)", fontSize: 13 }}
                   >
-                    🔥 {p.hotScore}
-                  </span>
-                  <strong>${p.price.amount.toFixed(2)}</strong>
+                    See on Etsy ↗
+                  </a>
                 </div>
-                <div style={{ fontWeight: 600, marginBottom: 4 }}>{p.title}</div>
-                <div className="stat-note">{p.shopName}</div>
-                <div className="stat-note" style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-                  <span>{p.numFavorers} favs</span>
-                  <span>{p.favsPerDay}/day</span>
-                  <span>{p.ageDays}d old</span>
-                </div>
-                <div className="stat-note" style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span>{p.favsPerView}% favs/view</span>
-                  <span>
-                    ~{p.salesPerMonth}/mo <span className="badge badge-est">est.</span>
-                  </span>
-                </div>
-                <a
-                  href={p.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{ color: "var(--purple-700)", fontSize: 13 }}
-                >
-                  See on Etsy ↗
-                </a>
-              </div>
-            ))}
-          </div>
-          {result.products.length === 0 && (
-            <p className="stat-note">No products match these filters. Try widening them.</p>
+              ))}
+            </div>
           )}
         </div>
       )}

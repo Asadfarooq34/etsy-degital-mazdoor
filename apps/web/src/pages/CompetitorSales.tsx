@@ -1,5 +1,12 @@
 import { useEffect, useState } from "react";
 import { api, type ShopVelocity, type TrackedShop } from "../api";
+import {
+  EmptyState,
+  ErrorState,
+  LoadingButton,
+  PageHeader,
+  Spinner,
+} from "../components";
 
 export default function CompetitorSales() {
   const [shopInput, setShopInput] = useState("");
@@ -80,11 +87,15 @@ export default function CompetitorSales() {
 
   return (
     <div>
-      <h1 className="page-title">Competitor Sales</h1>
-      <p className="page-sub">
-        Real sales velocity — lifetime sales differenced between daily snapshots.{" "}
-        <span className="stat-note">Snapshots run daily while the API server runs.</span>
-      </p>
+      <PageHeader
+        title="Competitor Sales"
+        sub={
+          <>
+            Real sales velocity — lifetime sales differenced between daily snapshots.{" "}
+            <span className="stat-note">Snapshots run daily while the API server runs.</span>
+          </>
+        }
+      />
 
       <div className="card">
         <div className="row">
@@ -99,21 +110,31 @@ export default function CompetitorSales() {
               onKeyDown={(e) => e.key === "Enter" && void track()}
             />
           </div>
-          <button className="btn btn-green" onClick={() => void track()} disabled={loading}>
-            {loading ? "…" : "Analyze →"}
-          </button>
-          <button
+          <LoadingButton
+            className="btn btn-green"
+            onClick={() => void track()}
+            loading={loading}
+          >
+            Analyze →
+          </LoadingButton>
+          <LoadingButton
             className="btn"
             style={{ background: "var(--purple-100)", color: "var(--purple-700)" }}
             onClick={() => void snapshotNow()}
-            disabled={loading}
+            loading={loading}
           >
             Snapshot now
-          </button>
+          </LoadingButton>
         </div>
       </div>
 
-      {error && <div className="error">{error}</div>}
+      {error && (
+        <ErrorState
+          message={error}
+          onRetry={() => void refresh()}
+          retryLabel="Reload shops"
+        />
+      )}
 
       {shops.length > 0 && (
         <div className="card">
@@ -142,6 +163,12 @@ export default function CompetitorSales() {
         </div>
       )}
 
+      {loading && selected !== null && (
+        <p className="stat-note" style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <Spinner label="Loading shop velocity" /> Loading shop velocity…
+        </p>
+      )}
+
       {velocity?.needsMoreData && (
         <div className="card">
           <p className="stat-note">{velocity.note}</p>
@@ -151,7 +178,7 @@ export default function CompetitorSales() {
 
       {velocity?.velocity && velocity.header && (
         <div>
-          <div className="stats">
+          <div className="stats-grid">
             <div className="stat">
               <div className="stat-label">Sold yesterday</div>
               <div className="stat-value">{velocity.velocity.soldYesterday}</div>
@@ -208,10 +235,11 @@ export default function CompetitorSales() {
       )}
 
       {shops.length === 0 && !loading && (
-        <p className="stat-note">
-          No shops tracked yet. Add a competitor's shop ID above — snapshots start immediately
-          and repeat daily.
-        </p>
+        <EmptyState
+          icon="🛍️"
+          title="No shops tracked yet"
+          hint="Add a competitor's shop ID above — snapshots start immediately and repeat daily."
+        />
       )}
     </div>
   );
